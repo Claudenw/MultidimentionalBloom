@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
+import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 import org.apache.commons.collections4.bloomfilter.Hasher;
 
 /**
@@ -14,13 +15,22 @@ import org.apache.commons.collections4.bloomfilter.Hasher;
  */
 public interface Container<E> {
 
+    int getValueCount();
+    int getFilterCount();
+
+    Shape getShape();
+
     Stream<E> get(BloomFilter filter);
+    Stream<E> get(Hasher filter);
 
     void put(BloomFilter filter, E value);
+    void put(Hasher hasher, E value);
 
     void remove(BloomFilter filter, E value);
+    void remove(Hasher hasher, E value);
 
     Stream<E> search(BloomFilter filter);
+    Stream<E> search(Hasher hasher);
 
     public static <E> Stream<E> emptyStream() {
         List<E> lst = Collections.emptyList();
@@ -30,13 +40,13 @@ public interface Container<E> {
     /**
      * Internal storage. Stores the bloom object with the Bloom filter. More than
      * one object may be stored with a single Bloom filter.
-     * 
+     *
      * @param <E> the type of object.
      */
-    interface Index {
+    public interface Index {
         /**
          * Get the index that matches the filter.
-         * 
+         *
          * @param hasher the hasher to match
          * @return the index that matches the filter or -1 if not found.
          */
@@ -45,7 +55,7 @@ public interface Container<E> {
         /**
          * Put the bloom filter into the index. If the index already contains the filter
          * the operation is undefined.
-         * 
+         *
          * @param hasher the hasher to add
          * @return the index of the storage collection.
          */
@@ -53,14 +63,14 @@ public interface Container<E> {
 
         /**
          * Remove the filter at the storage index from the index.
-         * 
+         *
          * @param index the index to remove.
          */
         void remove(int index);
 
         /**
          * Search for matching filters.
-         * 
+         *
          * @param hasher the hasher to search for.
          * @return an iterator of storage indexes.
          */
@@ -70,13 +80,13 @@ public interface Container<E> {
     /**
      * Internal storage. Stores the bloom object with the Bloom filter. More than
      * one object may be stored with a single Bloom filter.
-     * 
+     *
      * @param <E> the type of object.
      */
-    interface Storage<E> {
+    public interface Storage<E> {
         /**
          * Gets the collection of objects at the storage index.
-         * 
+         *
          * @param idx the storage index.
          * @return a stream of E from the storage index.
          */
@@ -84,7 +94,7 @@ public interface Container<E> {
 
         /**
          * Puts an object in the collection at the storage index.
-         * 
+         *
          * @param idx   the storage index.
          * @param value the value to put in the collection.
          */
@@ -92,7 +102,7 @@ public interface Container<E> {
 
         /**
          * Removes a value from the collection at the storage index
-         * 
+         *
          * @param idx   the index from which to remove the value.
          * @param value the value to remove
          * @return true if the storage index is empty after the removal.
