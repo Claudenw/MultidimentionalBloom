@@ -5,7 +5,9 @@ import java.util.stream.Stream;
 
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.Hasher;
+import org.xenei.bloom.filter.EWAHBloomFilter;
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
+import org.apache.commons.collections4.bloomfilter.CountingBloomFilter;
 
 public class ContainerImpl<E> implements Container<E> {
 
@@ -14,6 +16,7 @@ public class ContainerImpl<E> implements Container<E> {
     private Index index;
     private int valueCount;
     private int filterCount;
+    private CountingBloomFilter gate;
 
     public ContainerImpl(Shape shape, Storage<E> storage, Index index) {
         this.shape = shape;
@@ -21,6 +24,9 @@ public class ContainerImpl<E> implements Container<E> {
         this.index = index;
         this.valueCount = 0;
         this.filterCount = 0;
+        int gateCount = (int) (1 / shape.getProbability());
+        Shape gateShape = new Shape( shape.getHashFunctionName(), gateCount, shape.getProbability());
+        gate = new CountingBloomFilter( gateShape );
     }
 
     @Override
@@ -33,45 +39,31 @@ public class ContainerImpl<E> implements Container<E> {
         return filterCount;
     }
 
-
     @Override
     public Shape  getShape() {
         return shape;
     }
 
     @Override
-    public Stream<E> get(BloomFilter filter) {
-        verifyShape(filter);
-        return doGet( filter.getHasher() );
-    }
-
-    @Override
     public Stream<E> get(Hasher hasher) {
         verifyHasher(hasher);
-        return doGet( hasher );
-    }
 
-    private Stream<E> doGet(Hasher hasher) {
-        int idx = index.get(hasher);
-        if (idx == -1) {
-            return Container.emptyStream();
+        if ( gate.contains( hasher ))
+        {
+            int idx = index.get(hasher);
+            if (idx == -1) {
+                return Container.emptyStream();
+            }
+            return storage.get(idx);
         }
-        return storage.get(idx);
-    }
-
-    @Override
-    public void put(BloomFilter filter, E value) {
-        verifyShape(filter);
-        doPut( filter.getHasher(), value );
+        return Container.emptyStream();
     }
 
     @Override
     public void put(Hasher hasher, E value) {
         verifyHasher(hasher);
-        doPut( hasher, value );
-    }
+        gate.merge( hasher );
 
-    private void doPut(Hasher hasher, E value) {
         int idx = index.get(hasher);
         if (idx == -1) {
             idx = index.put(hasher);
@@ -82,32 +74,28 @@ public class ContainerImpl<E> implements Container<E> {
     }
 
     @Override
-    public void remove(BloomFilter filter, E value) {
-        verifyShape(filter);
-        doRemove( filter.getHasher(), value );
-    }
-
-    @Override
     public void remove(Hasher hasher, E value) {
         verifyHasher(hasher);
-        doRemove( hasher, value );
-    }
 
-    private void doRemove(Hasher hasher, E value) {
-        int idx = index.get(hasher);
-        if (idx != -1) {
-            valueCount--;
-            if (storage.remove(idx, value)) {
-                index.remove(idx);
-                filterCount--;
+        if ( gate.contains( hasher ))
+        {
+            int idx = index.get(hasher);
+            if (idx != -1) {
+
+                boolean[] result = storage.remove(idx, value);
+                if (result[Storage.REMOVED])
+                {
+                    BloomFilter gateFilter = new EWAHBloomFilter( hasher, gate.getShape() );
+                    valueCount--;
+                    gate.remove( gateFilter );
+                    if (result[Storage.EMPTY])
+                    {
+                        index.remove(idx);
+                        filterCount--;
+                    }
+                }
             }
         }
-    }
-
-    @Override
-    public Stream<E> search(BloomFilter filter) {
-        verifyShape(filter);
-        return doSearch( filter.getHasher() );
     }
 
     @Override
@@ -117,13 +105,16 @@ public class ContainerImpl<E> implements Container<E> {
     }
 
     private Stream<E> doSearch(Hasher hasher) {
-
-        Stream<E> result = Container.emptyStream();
-        Iterator<Stream<E>> iter = index.search(hasher).map(storage::get).iterator();
-        while (iter.hasNext()) {
-            result = Stream.concat(result, iter.next());
+        if (gate.contains(hasher)) {
+            Stream<E> result = Container.emptyStream();
+            Iterator<Stream<E>> iter = index.search(hasher).map(storage::get).iterator();
+            while (iter.hasNext()) {
+                result = Stream.concat(result, iter.next());
+            }
+            return result;
         }
-        return result;
+        return Container.emptyStream();
+
     }
 
     /**

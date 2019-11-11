@@ -3,6 +3,7 @@ package org.xenei.bloom.multidimensional.storage;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.stream.Stream;
 
 import org.xenei.bloom.multidimensional.Container;
@@ -32,17 +33,28 @@ public class InMemory<E> implements Storage<E> {
     }
 
     @Override
-    public boolean remove(int idx, E value) {
+    public boolean[] remove(int idx, E value) {
+        boolean[] result = new boolean[2];
+        result[0] = false;
+        result[1] = false;
         List<E> lst = storage.get(idx);
         if (lst != null) {
-            lst.remove(value);
+            result[0] = lst.remove(value);
             if (lst.isEmpty()) {
                 storage.remove(idx);
-                return true;
+                result[1] = true;
+            } else {
+                result[1] = false;
             }
-            return false;
+        } else {
+            result[1] = true;
         }
-        return true;
+        return result;
+    }
+
+    @Override
+    public Stream<Entry<Integer, List<E>>> list() {
+        return storage.entrySet().stream();
     }
 
 }
