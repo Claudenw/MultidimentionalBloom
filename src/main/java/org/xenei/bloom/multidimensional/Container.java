@@ -47,7 +47,7 @@ public interface Container<E> {
          * @param hasher the hasher to match
          * @return the index that matches the filter or -1 if not found.
          */
-        int get(Hasher filter);
+        int get(Hasher hasher);
 
         /**
          * Put the bloom filter into the index. If the index already contains the filter
@@ -56,7 +56,7 @@ public interface Container<E> {
          * @param hasher the hasher to add
          * @return the index of the storage collection.
          */
-        int put(Hasher filter);
+        int put(Hasher hasher);
 
         /**
          * Remove the filter at the storage index from the index.
