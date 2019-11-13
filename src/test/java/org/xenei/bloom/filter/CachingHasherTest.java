@@ -15,19 +15,18 @@ public class CachingHasherTest {
 
     @Test
     public void testSameValue() {
-        CachingHasher hasher1 = new CachingHasher.Factory().useFunction( MD5.NAME ).with("Hello World").build();
-        DynamicHasher hasher2 = new DynamicHasher.Factory().useFunction( MD5.NAME ).with("Hello World").build();
+        CachingHasher hasher1 = new CachingHasher.Factory().useFunction(MD5.NAME).with("Hello World").build();
+        DynamicHasher hasher2 = new DynamicHasher.Factory().useFunction(MD5.NAME).with("Hello World").build();
 
-        Shape shape = new Shape( MD5.NAME, 3, 1.0/10000 );
-        Iterator<Integer> iter1 = hasher1.getBits( shape );
-        Iterator<Integer> iter2 = hasher2.getBits( shape );
+        Shape shape = new Shape(MD5.NAME, 3, 1.0 / 10000);
+        Iterator<Integer> iter1 = hasher1.getBits(shape);
+        Iterator<Integer> iter2 = hasher2.getBits(shape);
 
-        while (iter2.hasNext())
-        {
-            assertTrue( "Caching iterator missing value", iter1.hasNext() );
-            assertEquals( iter2.next(), iter1.next() );
+        while (iter2.hasNext()) {
+            assertTrue("Caching iterator missing value", iter1.hasNext());
+            assertEquals(iter2.next(), iter1.next());
         }
-        assertFalse( "Caching iterator has too many values", iter1.hasNext() );
+        assertFalse("Caching iterator has too many values", iter1.hasNext());
 
     }
 

@@ -29,9 +29,9 @@ import org.apache.commons.collections4.bloomfilter.hasher.StaticHasher;
 import com.googlecode.javaewah.EWAHCompressedBitmap;
 
 /**
- * A bloom filter that uses EWAH compressed bitmaps to store enabled bits.
- * This filter is a good choice for large filters (high m value) with
- * a relatively low number of functions (k value).
+ * A bloom filter that uses EWAH compressed bitmaps to store enabled bits. This
+ * filter is a good choice for large filters (high m value) with a relatively
+ * low number of functions (k value).
  *
  */
 public class EWAHBloomFilter extends BloomFilter {
@@ -43,8 +43,9 @@ public class EWAHBloomFilter extends BloomFilter {
 
     /**
      * Constructs a filter from a hasher and shape.
+     * 
      * @param hasher the hasher to use
-     * @param shape the shape.
+     * @param shape  the shape.
      */
     public EWAHBloomFilter(Hasher hasher, Shape shape) {
         this(shape);
@@ -74,7 +75,6 @@ public class EWAHBloomFilter extends BloomFilter {
         return bs.toLongArray();
     }
 
-
     @Override
     public void merge(BloomFilter other) {
         verifyShape(other);
@@ -82,9 +82,9 @@ public class EWAHBloomFilter extends BloomFilter {
     }
 
     @Override
-    public void merge( Hasher hasher ) {
+    public void merge(Hasher hasher) {
         verifyHasher(hasher);
-        hasher.getBits(getShape()).forEachRemaining((IntConsumer) bitSet::set );
+        hasher.getBits(getShape()).forEachRemaining((IntConsumer) bitSet::set);
     }
 
     @Override
@@ -110,11 +110,8 @@ public class EWAHBloomFilter extends BloomFilter {
     }
 
     /**
-     * Merge an EWAHBloomFilter into this one.
-     * <p>
-     * This method takes advantage of the internal structure
-     * of the EWAHBloomFilter.
-     * </p>
+     * Merge an EWAHBloomFilter into this one. <p> This method takes advantage of
+     * the internal structure of the EWAHBloomFilter. </p>
      *
      * @param other the other EWAHBloomFilter filter.
      */
@@ -124,11 +121,8 @@ public class EWAHBloomFilter extends BloomFilter {
     }
 
     /**
-     * Calculate the andCardinality with another EWAHBloomFilter.
-     * <p>
-     * This method takes advantage of the internal structure
-     * of the EWAHBloomFilter.
-     * </p>
+     * Calculate the andCardinality with another EWAHBloomFilter. <p> This method
+     * takes advantage of the internal structure of the EWAHBloomFilter. </p>
      *
      * @param other the other EWAHBloomFilter filter.
      * @see #andCardinality(BloomFilter)
@@ -139,11 +133,8 @@ public class EWAHBloomFilter extends BloomFilter {
     }
 
     /**
-     * Calculate the orCardinality with another EWAHBloomFilter.
-     * <p>
-     * This method takes advantage of the internal structure
-     * of the EWAHBloomFilter.
-     * </p>
+     * Calculate the orCardinality with another EWAHBloomFilter. <p> This method
+     * takes advantage of the internal structure of the EWAHBloomFilter. </p>
      *
      * @param other the other EWAHBloomFilter filter.
      * @see #orCardinality(BloomFilter)
@@ -154,11 +145,8 @@ public class EWAHBloomFilter extends BloomFilter {
     }
 
     /**
-     * Calculate the xorCardinality with another EWAHBloomFilter.
-     * <p>
-     * This method takes advantage of the internal structure
-     * of the EWAHBloomFilter.
-     * </p>
+     * Calculate the xorCardinality with another EWAHBloomFilter. <p> This method
+     * takes advantage of the internal structure of the EWAHBloomFilter. </p>
      *
      * @param other the other EWAHBloomFilter filter.
      * @see #xorCardinality(BloomFilter)

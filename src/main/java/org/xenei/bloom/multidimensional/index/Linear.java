@@ -54,7 +54,6 @@ public class Linear implements Index {
         }
     };
 
-
     /**
      * Constructs the Linear index.
      *
@@ -97,8 +96,8 @@ public class Linear implements Index {
     @Override
     public void remove(int index) {
         list.set(index, null);
-        if (empty.length() < index) {
-            empty.resize(index);
+        if (empty.size() <= index) {
+            empty.resize(index + 1);
         }
         empty.set(index);
     }
@@ -114,6 +113,5 @@ public class Linear implements Index {
         }
         return result.stream();
     }
-
 
 }

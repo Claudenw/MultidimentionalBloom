@@ -16,9 +16,8 @@ public class LeafNode implements Node {
     }
 
     @Override
-    public String toString()
-    {
-        return String.format( "LeafNode %s", idx );
+    public String toString() {
+        return String.format("LeafNode %s", idx);
     }
 
     @Override
@@ -32,7 +31,7 @@ public class LeafNode implements Node {
     }
 
     public void delete() {
-        parent.remove( this );
+        parent.remove(this);
 
     }
 

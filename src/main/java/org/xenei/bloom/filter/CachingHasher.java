@@ -21,6 +21,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -34,13 +35,12 @@ import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.apache.commons.collections4.bloomfilter.hasher.MD5;
 import org.apache.commons.collections4.bloomfilter.hasher.Murmur128;
-import org.apache.commons.collections4.bloomfilter.hasher.Murmur32;
-import org.apache.commons.collections4.bloomfilter.hasher.ObjectsHash;
 
 /**
- * The class that performs hashing on demand. Items can be added to the hasher using the
- * {@code with()} methods. once {@code getBits()} method is called it is an error to call
- * {@code with()} again.
+ * The class that performs hashing on demand. Items can be added to the hasher
+ * using the {@code with()} methods. once {@code getBits()} method is called it
+ * is an error to call {@code with()} again.
+ * 
  * @since 4.5
  */
 public class CachingHasher implements Hasher {
@@ -58,12 +58,24 @@ public class CachingHasher implements Hasher {
     /**
      * Constructs a DynamicHasher.
      *
-     * @param name the name for the function.
+     * @param name     the name for the function.
      * @param function the function to use.
-     * @param buffers the byte buffers that will be hashed.
+     * @param buffers  the byte buffers that will be hashed.
      */
     public CachingHasher(String name, List<long[]> buffers) {
         this.buffers = new ArrayList<long[]>(buffers);
+        this.name = name;
+    }
+
+    /**
+     * Constructs a DynamicHasher.
+     *
+     * @param name     the name for the function.
+     * @param function the function to use.
+     * @param buffers  the byte buffers that will be hashed.
+     */
+    public CachingHasher(String name, long[][] buffers) {
+        this.buffers = Arrays.asList(buffers);
         this.name = name;
     }
 
@@ -73,20 +85,20 @@ public class CachingHasher implements Hasher {
     }
 
     /**
-     * Return an iterator of integers that are the bits to enable in the Bloom filter
-     * based on the shape. The iterator may return the same value multiple times. There is
-     * no guarantee made as to the order of the integers.
+     * Return an iterator of integers that are the bits to enable in the Bloom
+     * filter based on the shape. The iterator may return the same value multiple
+     * times. There is no guarantee made as to the order of the integers.
      *
      * @param shape the shape of the desired Bloom filter.
      * @return the Iterator of integers;
-     * @throws IllegalArgumentException if {@code shape.getHasherName()} does not equal
-     * {@code getName()}
+     * @throws IllegalArgumentException if {@code shape.getHasherName()} does not
+     *                                  equal {@code getName()}
      */
     @Override
     public PrimitiveIterator.OfInt getBits(Shape shape) {
         if (!getName().equals(shape.getHashFunctionName())) {
             throw new IllegalArgumentException(
-                String.format("Shape hasher %s is not %s", shape.getHashFunctionName(), getName()));
+                    String.format("Shape hasher %s is not %s", shape.getHashFunctionName(), getName()));
         }
         return new Iter(shape);
     }
@@ -137,6 +149,7 @@ public class CachingHasher implements Hasher {
 
     /**
      * A factory that produces DynamicHasher Builders.
+     * 
      * @since 4.5
      */
     public static class Factory implements Hasher.Factory {
@@ -165,26 +178,27 @@ public class CachingHasher implements Hasher {
 
         /**
          * Registers a Hash function implementation. After registration the name can be
-         * used to retrieve the Hasher. <p> The function calculates the long value that is
-         * used to turn on a bit in the Bloom filter. The first argument is a
+         * used to retrieve the Hasher. <p> The function calculates the long value that
+         * is used to turn on a bit in the Bloom filter. The first argument is a
          * {@code byte[]} containing the bytes to be indexed, the second argument is a
          * seed index. </p><p> On the first call to {@code applyAsLong} the seed index
          * will be 0 and the function should start the hash sequence. </p> <p> On
-         * subsequent calls the hash function using the same buffer the seed index will be
-         * incremented. The function should return a different calculated value on each
-         * call. The function may use the seed as part of the calculation or simply use it
-         * to detect when the buffer has changed. </p>
+         * subsequent calls the hash function using the same buffer the seed index will
+         * be incremented. The function should return a different calculated value on
+         * each call. The function may use the seed as part of the calculation or simply
+         * use it to detect when the buffer has changed. </p>
          *
          * @see #useFunction(String)
-         * @param name The name of the hash function
-         * @param functionClass The function class for the hasher to use. Must have a zero
-         * argument constructor.
-         * @throws SecurityException if the no argument constructor can not be accessed.
+         * @param name          The name of the hash function
+         * @param functionClass The function class for the hasher to use. Must have a
+         *                      zero argument constructor.
+         * @throws SecurityException     if the no argument constructor can not be
+         *                               accessed.
          * @throws NoSuchMethodException if functionClass does not have a no argument
-         * constructor.
+         *                               constructor.
          */
         protected void register(String name, Class<? extends ToLongBiFunction<byte[], Integer>> functionClass)
-            throws NoSuchMethodException, SecurityException {
+                throws NoSuchMethodException, SecurityException {
             Constructor<? extends ToLongBiFunction<byte[], Integer>> c = functionClass.getConstructor();
             funcMap.put(name, c);
         }
@@ -210,6 +224,7 @@ public class CachingHasher implements Hasher {
 
     /**
      * The builder for DyanamicHashers.
+     * 
      * @since 4.5
      */
     public static class Builder implements Hasher.Builder {
@@ -231,7 +246,7 @@ public class CachingHasher implements Hasher {
         /**
          * Constructs a DynamicHasher builder.
          *
-         * @param name the name of the function.
+         * @param name     the name of the function.
          * @param function the function implementation.
          */
         public Builder(String name, ToLongBiFunction<byte[], Integer> function) {
@@ -249,19 +264,18 @@ public class CachingHasher implements Hasher {
         @Override
         public CachingHasher build() throws IllegalArgumentException {
             List<long[]> cache = new ArrayList<long[]>();
-            for (byte[] buff : buffers)
-            {
+            for (byte[] buff : buffers) {
                 long[] result = new long[2];
                 result[0] = function.applyAsLong(buff, 0);
                 result[1] = function.applyAsLong(buff, 1) - result[0];
-                cache.add( result );
+                cache.add(result);
             }
             return new CachingHasher(name, cache);
         }
 
         @Override
         public final Builder with(byte property) {
-            return with(new byte[] {property});
+            return with(new byte[] { property });
         }
 
         @Override

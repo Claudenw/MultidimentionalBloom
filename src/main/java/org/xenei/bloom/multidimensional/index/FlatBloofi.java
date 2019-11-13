@@ -57,14 +57,13 @@ public final class FlatBloofi implements Index {
     @Override
     public int get(Hasher hasher) {
 
-        BitSet answer = new BitSet(busy.length());
+        BitSet answer = new BitSet(busy.size());
         answer.or(busy);
         Set<Integer> values = new HashSet<Integer>();
         hasher.getBits(shape).forEachRemaining((Consumer<Integer>) values::add);
 
         for (int bufferNumber = 0; bufferNumber < buffer.size(); ++bufferNumber) {
-            if (answer.cardinality() == 0)
-            {
+            if (answer.cardinality() == 0) {
                 return -1;
             }
             long[] buf = buffer.get(bufferNumber);
@@ -77,8 +76,7 @@ public final class FlatBloofi implements Index {
                 }
                 for (int bitNumber = 0; bitNumber < Long.SIZE; bitNumber++) {
                     int answIdx = bitNumber + (bufferNumber * Long.SIZE);
-                    if (answer.get(answIdx))
-                    {
+                    if (answer.get(answIdx)) {
                         answer.set(answIdx, (l & (1L << bitNumber)) > 0);
                     }
                 }
@@ -95,9 +93,10 @@ public final class FlatBloofi implements Index {
         int idx = busy.nextUnsetBit(0);
         if (idx < 0) {
             // extend the busy
-            idx = busy.length();
+            idx = busy.size();
             busy.resize(idx + 64);
-            //int longCount = Double.valueOf(Math.ceil(shape.getNumberOfBits() / (double) Long.SIZE)).intValue();
+            // int longCount = Double.valueOf(Math.ceil(shape.getNumberOfBits() / (double)
+            // Long.SIZE)).intValue();
             buffer.add(new long[shape.getNumberOfBits()]);
         }
         setBloomAt(idx, hasher);

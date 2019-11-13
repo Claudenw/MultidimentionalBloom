@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
-import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 import org.apache.commons.collections4.bloomfilter.Hasher;
 
@@ -17,6 +16,7 @@ import org.apache.commons.collections4.bloomfilter.Hasher;
 public interface Container<E> {
 
     int getValueCount();
+
     int getFilterCount();
 
     Shape getShape();
@@ -41,6 +41,9 @@ public interface Container<E> {
      * @param <E> the type of object.
      */
     public interface Index {
+
+        static int NOT_FOUND = -1;
+
         /**
          * Get the index that matches the filter.
          *
@@ -105,14 +108,15 @@ public interface Container<E> {
          *
          * @param idx   the index from which to remove the value.
          * @param value the value to remove
-         * @return first value true if the item was removed, second true if the storage index is empty after the removal.
+         * @return first value true if the item was removed, second true if the storage
+         *         index is empty after the removal.
          */
         boolean[] remove(int idx, E value);
 
         /**
-         * Gets a stream of all the elements
-         * The indexes are not guaranteed to be in any particular order.
-         * The lists are not guaranteed to be in any particular order.
+         * Gets a stream of all the elements The indexes are not guaranteed to be in any
+         * particular order. The lists are not guaranteed to be in any particular order.
+         * 
          * @return a stream of all the elements.
          */
         Stream<Map.Entry<Integer, List<E>>> list();

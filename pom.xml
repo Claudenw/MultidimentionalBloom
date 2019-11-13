@@ -16,11 +16,11 @@
     </plugins>
   </build>
   <dependencies>
-<!--   	<dependency> -->
-<!--   		<groupId>com.googlecode.javaewah</groupId> -->
-<!--   		<artifactId>JavaEWAH</artifactId> -->
-<!--   		<version>1.1.7</version> -->
-<!--   	</dependency> -->
+  	<dependency>
+  		<groupId>com.googlecode.javaewah</groupId>
+  		<artifactId>JavaEWAH</artifactId>
+  		<version>1.1.7</version>
+  	</dependency>
   	<dependency>
   		<groupId>org.apache.commons</groupId>
   		<artifactId>commons-collections4</artifactId>
@@ -30,6 +30,12 @@
   		<groupId>junit</groupId>
   		<artifactId>junit</artifactId>
   		<version>4.12</version>
+  		<scope>test</scope>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.xenei</groupId>
+  		<artifactId>junit-contracts</artifactId>
+  		<version>0.2.0</version>
   		<scope>test</scope>
   	</dependency>
   </dependencies>

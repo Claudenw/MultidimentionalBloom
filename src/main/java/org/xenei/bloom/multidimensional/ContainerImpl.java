@@ -25,8 +25,8 @@ public class ContainerImpl<E> implements Container<E> {
         this.valueCount = 0;
         this.filterCount = 0;
         int gateCount = (int) (1 / shape.getProbability());
-        Shape gateShape = new Shape( shape.getHashFunctionName(), gateCount, shape.getProbability());
-        gate = new CountingBloomFilter( gateShape );
+        Shape gateShape = new Shape(shape.getHashFunctionName(), gateCount, shape.getProbability());
+        gate = new CountingBloomFilter(gateShape);
     }
 
     @Override
@@ -40,7 +40,7 @@ public class ContainerImpl<E> implements Container<E> {
     }
 
     @Override
-    public Shape  getShape() {
+    public Shape getShape() {
         return shape;
     }
 
@@ -48,8 +48,7 @@ public class ContainerImpl<E> implements Container<E> {
     public Stream<E> get(Hasher hasher) {
         verifyHasher(hasher);
 
-        if ( gate.contains( hasher ))
-        {
+        if (gate.contains(hasher)) {
             int idx = index.get(hasher);
             if (idx == -1) {
                 return Container.emptyStream();
@@ -62,7 +61,7 @@ public class ContainerImpl<E> implements Container<E> {
     @Override
     public void put(Hasher hasher, E value) {
         verifyHasher(hasher);
-        gate.merge( hasher );
+        gate.merge(hasher);
 
         int idx = index.get(hasher);
         if (idx == -1) {
@@ -77,19 +76,16 @@ public class ContainerImpl<E> implements Container<E> {
     public void remove(Hasher hasher, E value) {
         verifyHasher(hasher);
 
-        if ( gate.contains( hasher ))
-        {
+        if (gate.contains(hasher)) {
             int idx = index.get(hasher);
             if (idx != -1) {
 
                 boolean[] result = storage.remove(idx, value);
-                if (result[Storage.REMOVED])
-                {
-                    BloomFilter gateFilter = new EWAHBloomFilter( hasher, gate.getShape() );
+                if (result[Storage.REMOVED]) {
+                    BloomFilter gateFilter = new EWAHBloomFilter(hasher, gate.getShape());
                     valueCount--;
-                    gate.remove( gateFilter );
-                    if (result[Storage.EMPTY])
-                    {
+                    gate.remove(gateFilter);
+                    if (result[Storage.EMPTY]) {
                         index.remove(idx);
                         filterCount--;
                     }
@@ -101,7 +97,7 @@ public class ContainerImpl<E> implements Container<E> {
     @Override
     public Stream<E> search(Hasher hasher) {
         verifyHasher(hasher);
-        return doSearch( hasher );
+        return doSearch(hasher);
     }
 
     private Stream<E> doSearch(Hasher hasher) {
