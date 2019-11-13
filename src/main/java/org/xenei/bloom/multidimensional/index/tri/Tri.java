@@ -26,38 +26,6 @@ public abstract class Tri implements Index {
     private final int width;
     private final long mask;
 
-    private static Comparator<BloomFilter> comp = new Comparator<BloomFilter>() {
-        /**
-         * Comparator for two Filters. Compares them based on byte values. Primarily
-         * used to compare filters for equality.
-         *
-         * @param filter1 the first filter.
-         * @param filter2 the second filter.
-         * @return -1, 0 or 1 as per Comparator
-         * @see Comparator
-         */
-        @Override
-        public int compare(BloomFilter filter1, BloomFilter filter2) {
-            if (filter1 == null) {
-                return filter2 == null ? 0 : -1;
-            } else {
-                if (filter2 == null) {
-                    return 1;
-                }
-            }
-            long[] num1 = filter1.getBits();
-            long[] num2 = filter2.getBits();
-            int limit = Integer.min(num1.length, num2.length);
-            for (int i = 0; i < limit; i++) {
-                int result = Long.compare(num1[i], num2[i]);
-                if (result != 0) {
-                    return result;
-                }
-            }
-            return Integer.compare(num1.length, num2.length);
-        }
-    };
-
     protected Tri(Shape shape, int width, long mask) {
         this.shape = shape;
         this.width = width;
