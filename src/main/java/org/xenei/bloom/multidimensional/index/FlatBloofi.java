@@ -21,37 +21,60 @@ import com.googlecode.javaewah.datastructure.BitSet;
  * Originally from
  * https://github.com/lemire/bloofi/blob/master/src/mvm/provenance/FlatBloomFilterIndex.java
  *
- * @author Daniel Lemire
- *
  * @param <E>
  */
-
 public final class FlatBloofi implements Index {
 
+    /**
+     * The shape of the bloom filters.
+     */
     private final Shape shape;
 
+    /**
+     * A list of buffers.
+     * Each entry in the buffer is associated with a bit in the bloom filter, so the index to the buffer
+     * is the bit position.  Each long[] stored at the index is a bitmap of indexed entries that have that
+     * bit enabled.
+     */
     private ArrayList<long[]> buffer;
 
+    /**
+     * A bitset that indicates which bits in the long[] buffers are in use.  Thus this tracks the
+     * deleted filters through its negative space.
+     */
     private BitSet busy;
 
+    /**
+     * Constructs a flat bloofi.
+     * @param shape the Shape of the contained Bloom filters.
+     */
     public FlatBloofi(Shape shape) {
         this.shape = shape;
         this.buffer = new ArrayList<long[]>(0);
         this.busy = new BitSet(0);
     }
 
-    private void clearBloomAt(int i) {
-        final long[] mybuffer = buffer.get(i / 64);
-        final long mask = ~(1l << i);
+    /**
+     * Clear (remove) the bloom filter from the buffers
+     * @param idx the index of the bloom filter in the busy bit set.
+     */
+    private void clearBloomAt(int idx) {
+        final long[] mybuffer = buffer.get(idx / 64);
+        final long mask = ~(1l << idx);
         for (int k = 0; k < mybuffer.length; ++k) {
             mybuffer[k] &= mask;
         }
     }
 
-    private void setBloomAt(int i, Hasher hasher) {
-        final long[] mybuffer = buffer.get(i / 64);
-        final long mask = (1l << i);
-        hasher.getBits(shape).forEachRemaining((IntConsumer) idx -> mybuffer[idx] |= mask);
+    /**
+     * Using the hasher set the bits for a bloom filter.
+     * @param idx the index of the bloom filter in the busy set.
+     * @param hasher the hasher to generate the bits to turn on.
+     */
+    private void setBloomAt(int idx, Hasher hasher) {
+        final long[] mybuffer = buffer.get(idx / 64);
+        final long mask = (1l << idx);
+        hasher.getBits(shape).forEachRemaining((IntConsumer) i -> mybuffer[i] |= mask);
     }
 
     @Override

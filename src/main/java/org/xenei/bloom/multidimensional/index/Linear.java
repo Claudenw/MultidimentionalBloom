@@ -17,11 +17,22 @@ import com.googlecode.javaewah.datastructure.BitSet;
  * A linear implementation of an index.
  */
 public class Linear implements Index {
-
+    /**
+     * The shape of the bloom filters.
+     */
     private Shape shape;
+    /**
+     * The list of bloom filters.
+     */
     private List<BloomFilter> list;
+    /**
+     * A bitset that tracks which entries in the list are empty (available for resuse).
+     */
     private BitSet empty;
 
+    /**
+     * A comparator for bloom filters to determine if they are bit for bit identical.
+     */
     private static Comparator<BloomFilter> comp = new Comparator<BloomFilter>() {
         /**
          * Comparator for two Filters. Compares them based on byte values. Primarily

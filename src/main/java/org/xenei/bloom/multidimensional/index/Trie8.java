@@ -4,16 +4,33 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
-import org.xenei.bloom.multidimensional.index.tri.Tri;
+import org.xenei.bloom.multidimensional.index.tri.Trie;
 
-public class Tri8 extends Tri {
-    public static final int WIDTH = 8;
+/**
+ * A Trie index that uses 8 bit bytes as chunks.
+ *
+ * @see Trie
+ */
+public class Trie8 extends Trie {
+    /**
+     * The size of the chunks.
+     */
+    public static final int CHUNK_SIZE = Byte.SIZE;
+
+    /**
+     * The mask for the chunks
+     */
     public static final long MASK = 0xFFL;
 
+    /**
+     * A list of bytes to matching bytes in the bloom filter.
+     */
     private static final int[][] byteTable;
 
+
     static {
-        int limit = (1 << Byte.SIZE);
+        // populate the byteTable
+        int limit = (1 << CHUNK_SIZE);
         byteTable = new int[limit][];
         List<Integer> lst = new ArrayList<Integer>();
 
@@ -29,13 +46,17 @@ public class Tri8 extends Tri {
 
     }
 
-    public Tri8(Shape shape) {
-        super(shape, WIDTH, MASK);
+    /**
+     * Constructs a Trie8
+     * @param shape the shape of the contained Bloom filters.
+     */
+    public Trie8(Shape shape) {
+        super(shape, CHUNK_SIZE, MASK);
     }
 
     @Override
-    public int[] getNodeIndexes(BloomFilter filter, int level) {
-        return byteTable[getChunk(filter, level)];
+    public int[] getNodeIndexes(int chunk) {
+        return byteTable[chunk];
     }
 
 }

@@ -17,28 +17,73 @@ import org.xenei.bloom.multidimensional.Container.Index;
 
 import com.googlecode.javaewah.datastructure.BitSet;
 
-public abstract class Tri implements Index {
+/**
+ * An asbtract Trie implementation.
+ *
+ * Bloom filters are chunked and each chunk is used to determine a leaf node where the filter is stored.
+ * When searching each chunk is expanded into the matching chunks as per the Bloom filter matching
+ * algorithm and all branches explored.
+ *
+ */
+public abstract class Trie implements Index {
 
+    /**
+     * The shape of the contained Bloom filters.
+     */
     protected final Shape shape;
+    /**
+     * A list of all leaf nodes created in the system
+     */
     private final List<LeafNode> list;
+    /**
+     * A bitset that indicates the leaf nodes in the list that have been deleted (set to null).
+     * This is used for deletion and to reuse list entries.
+     */
     private final BitSet empty;
+    /**
+     * The root node of the Trie.
+     */
     private InnerNode root;
-    private final int width;
+    /**
+     * The size of the chunks in the Trie in bits.
+     */
+    private final int chunkSize;
+    /**
+     * The mask for a single chunk.
+     */
     private final long mask;
 
-    protected Tri(Shape shape, int width, long mask) {
+    /**
+     * Constructs a Trie.
+     * @param shape the shape of the contained Bloom filters.
+     * @param chunkSize the size of the Trie chunks in bits.
+     * @param mask the mask to extract a single chunk.
+     */
+    protected Trie(Shape shape, int chunkSize, long mask) {
         this.shape = shape;
-        this.width = width;
+        this.chunkSize = chunkSize;
         this.mask = mask;
         this.list = new ArrayList<LeafNode>();
         this.empty = new BitSet(0);
-        root = new InnerNode(0, shape, this, null);
+        root = new InnerNode(0, this, null);
     }
 
-    protected abstract int[] getNodeIndexes(BloomFilter filter, int level);
+    /**
+     * Returns the matching nodes for a specific level in the Trie.
+     * The concrete class will translate the chunk into all possible matching chunks.
+     * The returned values must be unique but need not be ordered.
+     * @param filter the filter to extract the matching nodes from.
+     * @param level the level of the Trie that we are checking.
+     * @return an array of all matching chunks.
+     */
+    protected abstract int[] getNodeIndexes(int chunk);
 
-    public final int getWidth() {
-        return width;
+    /**
+     * Get the chunk size for this Trie.
+     * @return the chunk size for this trie.
+     */
+    public final int getChunkSize() {
+        return chunkSize;
     }
 
     @Override
@@ -105,12 +150,19 @@ public abstract class Tri implements Index {
 
     }
 
+    /**
+     * Get the array of long representation of the Bloom filter specified by the leaf node.
+     * The Bloom filter is encoded into the Trie, this method extracts it.
+     * @param nodes the inner nodes that point to the leaf node in order from root to inner node above leaf.
+     * @param leaf the leaf node.
+     * @return the long[] representation of the Bloom filter stored on the leaf.
+     */
     private long[] assembleLongs(List<InnerNode> nodes, LeafNode leaf) {
         int limit = Double.valueOf(Math.ceil(shape.getNumberOfBits() / (double) Long.SIZE)).intValue();
         long[] result = new long[limit];
 
         for (int level = 0; level < nodes.size(); level++) {
-            int longIdx = level * width / Long.SIZE;
+            int longIdx = level * chunkSize / Long.SIZE;
             long val;
             if (level < nodes.size() - 1) {
                 val = nodes.get(level).find(nodes.get(level + 1));
@@ -118,13 +170,19 @@ public abstract class Tri implements Index {
                 val = nodes.get(level).find(leaf);
             }
             if (val != 0) {
-                result[longIdx] |= val << width * level;
+                result[longIdx] |= val << chunkSize * level;
             }
         }
 
         return result;
     }
 
+    /**
+     * Get the chunk for a specific level from a Bloom filter.
+     * @param filter the Bloom filter to extract the chunk from.
+     * @param level the level of the chunk.
+     * @return the specified chunk.
+     */
     public final int getChunk(BloomFilter filter, int level) {
         long[] buffer = filter.getBits();
 
@@ -132,8 +190,16 @@ public abstract class Tri implements Index {
         if (idx >= buffer.length) {
             return 0x0;
         }
-        int ofs = Math.floorMod(level * width, Long.SIZE);
+        int ofs = Math.floorMod(level * chunkSize, Long.SIZE);
 
         return (int) ((buffer[idx] >> ofs) & mask);
+    }
+
+    /**
+     * Gets the shape of the Bloom filters in this Trie.
+     * @return the shape of the contained Bloom filters.
+     */
+    protected Shape getShape() {
+        return shape;
     }
 }

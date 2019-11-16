@@ -9,15 +9,43 @@ import org.xenei.bloom.filter.EWAHBloomFilter;
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 import org.apache.commons.collections4.bloomfilter.CountingBloomFilter;
 
+/**
+ * An iplementation of a Multidimensional Bloom filter.
+ *
+ * @param <E> The type of object to be stored.
+ */
 public class ContainerImpl<E> implements Container<E> {
-
+    /**
+     * The storage for the objects.
+     */
     private Storage<E> storage;
+    /**
+     * The shape of the Blom filters in the container.
+     */
     private Shape shape;
+    /**
+     * The index of the Bloom filters.
+     */
     private Index index;
+    /**
+     * The number of values in the container.
+     */
     private int valueCount;
+    /**
+     * The number of filters in the container.
+     */
     private int filterCount;
+    /**
+     * The Bloom filter that gates the container.
+     */
     private CountingBloomFilter gate;
 
+    /**
+     * Constructs a Container.
+     * @param shape the shape of the Bloom filter.
+     * @param storage the storage for the objects
+     * @param index the index for the bloom filter.
+     */
     public ContainerImpl(Shape shape, Storage<E> storage, Index index) {
         this.shape = shape;
         this.storage = storage;
@@ -100,6 +128,11 @@ public class ContainerImpl<E> implements Container<E> {
         return doSearch(hasher);
     }
 
+    /**
+     * Performs a search using a hasher.
+     * @param hasher the hasher to search with.
+     * @return the stream of matchign objects.
+     */
     private Stream<E> doSearch(Hasher hasher) {
         if (gate.contains(hasher)) {
             Stream<E> result = Container.emptyStream();

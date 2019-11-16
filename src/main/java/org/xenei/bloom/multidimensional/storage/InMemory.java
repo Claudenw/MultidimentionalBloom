@@ -11,7 +11,7 @@ import org.xenei.bloom.multidimensional.Container.Storage;
 
 public class InMemory<E> implements Storage<E> {
 
-    HashMap<Integer, List<E>> storage = new HashMap<Integer, List<E>>();
+    private HashMap<Integer, List<E>> storage = new HashMap<Integer, List<E>>();
 
     @Override
     public Stream<E> get(int idx) {
@@ -35,19 +35,19 @@ public class InMemory<E> implements Storage<E> {
     @Override
     public boolean[] remove(int idx, E value) {
         boolean[] result = new boolean[2];
-        result[0] = false;
-        result[1] = false;
+        result[REMOVED] = false;
+        result[EMPTY] = false;
         List<E> lst = storage.get(idx);
         if (lst != null) {
-            result[0] = lst.remove(value);
+            result[REMOVED] = lst.remove(value);
             if (lst.isEmpty()) {
                 storage.remove(idx);
-                result[1] = true;
+                result[EMPTY] = true;
             } else {
-                result[1] = false;
+                result[EMPTY] = false;
             }
         } else {
-            result[1] = true;
+            result[EMPTY] = true;
         }
         return result;
     }
