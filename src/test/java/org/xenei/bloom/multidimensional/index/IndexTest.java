@@ -3,9 +3,7 @@ package org.xenei.bloom.multidimensional.index;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
+import java.util.Set;
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 import org.junit.After;
 import org.junit.Before;
@@ -80,25 +78,25 @@ public class IndexTest {
         int idx4 = index.put(hasher4);
 
         CachingHasher search = new CachingHasher("Test", new long[][] { { 29, 0 }, { 13, 0 } });
-        List<Integer> result = index.search(search).collect(Collectors.toList());
+        Set<Integer> result = index.search(search);
         assertEquals(1, result.size());
-        assertEquals(idx1, result.get(0).intValue());
+        assertEquals(idx1, result.iterator().next().intValue());
 
         search = new CachingHasher("Test", new long[][] { { 29, 0 } });
-        result = index.search(search).collect(Collectors.toList());
+        result = index.search(search);
         assertEquals(3, result.size());
         assertTrue(result.contains(Integer.valueOf(idx1)));
         assertTrue(result.contains(Integer.valueOf(idx2)));
         assertTrue(result.contains(Integer.valueOf(idx4)));
 
         search = new CachingHasher("Test", new long[][] { { 13, 0 } });
-        result = index.search(search).collect(Collectors.toList());
+        result = index.search(search);
         assertEquals(2, result.size());
         assertTrue(result.contains(Integer.valueOf(idx1)));
         assertTrue(result.contains(Integer.valueOf(idx3)));
 
         search = new CachingHasher("Test", new long[][] { { 29, 0 }, { 13, 0 }, { 14, 0 } });
-        result = index.search(search).collect(Collectors.toList());
+        result = index.search(search);
         assertEquals(0, result.size());
 
     }

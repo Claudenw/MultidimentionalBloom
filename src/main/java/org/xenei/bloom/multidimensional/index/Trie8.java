@@ -2,7 +2,6 @@ package org.xenei.bloom.multidimensional.index;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 import org.xenei.bloom.multidimensional.index.tri.Trie;
 
@@ -47,12 +46,23 @@ public class Trie8 extends Trie {
     }
 
     /**
-     * Constructs a Trie8
+     * Constructs a Trie8.
+     * Uses 1/shape.getProbability() as the estimated number of filters.
      * @param shape the shape of the contained Bloom filters.
      */
     public Trie8(Shape shape) {
-        super(shape, CHUNK_SIZE, MASK);
+        super(Double.valueOf( 1.0/shape.getProbability() ).intValue(), shape, CHUNK_SIZE, MASK);
     }
+
+    /**
+     * Constructs a Trie8
+     * @param the estimated number of Bloom filters to be indexed.
+     * @param shape the shape of the contained Bloom filters.
+     */
+    public Trie8(int estimatedPopulation, Shape shape) {
+        super(Double.valueOf( 1.0/shape.getProbability() ).intValue(), shape, CHUNK_SIZE, MASK);
+    }
+
 
     @Override
     public int[] getNodeIndexes(int chunk) {

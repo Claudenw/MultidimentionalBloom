@@ -3,16 +3,15 @@ package org.xenei.bloom.multidimensional.index.tri;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.apache.commons.collections4.bloomfilter.BitSetBloomFilter;
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
-import org.xenei.bloom.multidimensional.Container;
 import org.xenei.bloom.multidimensional.Container.Index;
 
 import com.googlecode.javaewah.datastructure.BitSet;
@@ -55,19 +54,19 @@ public abstract class Trie implements Index {
 
     /**
      * Constructs a Trie.
+     * @param estimatedPopulation the estimated number of Bloom filters to be indexed.
      * @param shape the shape of the contained Bloom filters.
      * @param chunkSize the size of the Trie chunks in bits.
      * @param mask the mask to extract a single chunk.
      */
-    protected Trie(Shape shape, int chunkSize, long mask) {
+    protected Trie(int estimatedPopulation, Shape shape, int chunkSize, long mask) {
         this.shape = shape;
         this.chunkSize = chunkSize;
         this.mask = mask;
-        this.list = new ArrayList<LeafNode>();
+        this.list = new ArrayList<LeafNode>(estimatedPopulation);
         this.empty = new BitSet(0);
         root = new InnerNode(0, this, null);
     }
-
     /**
      * Returns the matching nodes for a specific level in the Trie.
      * The concrete class will translate the chunk into all possible matching chunks.
@@ -118,16 +117,18 @@ public abstract class Trie implements Index {
     }
 
     @Override
-    public final Stream<Integer> search(Hasher hasher) {
+    public final Set<Integer> search(Hasher hasher) {
         BloomFilter filter = new BitSetBloomFilter(hasher, shape);
-        return root.search(Container.emptyStream(), filter);
+        Set<Integer> result = new HashSet<Integer>();
+        root.search(result, filter);
+        return result;
     }
 
     @Override
     public int get(Hasher hasher) {
         BloomFilter filter = new BitSetBloomFilter(hasher, shape);
         long[] filterLongs = filter.getBits();
-        List<LeafNode> candidates = search(hasher).map(list::get).filter(l -> l != null).collect(Collectors.toList());
+        List<LeafNode> candidates = search(hasher).stream().map(list::get).filter(l -> l != null).collect(Collectors.toList());
         int result = Index.NOT_FOUND;
         for (LeafNode leaf : candidates) {
             List<InnerNode> lst = new ArrayList<InnerNode>();
@@ -201,5 +202,9 @@ public abstract class Trie implements Index {
      */
     protected Shape getShape() {
         return shape;
+    }
+
+    public int getMaxDepth() {
+       return (int) Math.ceil(shape.getNumberOfBits() * 1.0 / getChunkSize());
     }
 }

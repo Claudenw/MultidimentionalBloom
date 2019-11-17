@@ -2,8 +2,9 @@ package org.xenei.bloom.multidimensional.index;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
-import java.util.stream.Stream;
+import java.util.Set;
 
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
@@ -15,6 +16,10 @@ import com.googlecode.javaewah.datastructure.BitSet;
 
 /**
  * A linear implementation of an index.
+ * <p>
+ * This implementation is adequate for smallish populations.  Large populations with
+ * high collision rates will see significant performance degredation.
+ * </p>
  */
 public class Linear implements Index {
     /**
@@ -67,12 +72,21 @@ public class Linear implements Index {
 
     /**
      * Constructs the Linear index.
-     *
+     * Uses 1/shape.getProbability() as the estimated number of filters.
      * @param shape the shape of the bloom filters.
      */
     public Linear(Shape shape) {
+        this( Double.valueOf( 1.0/shape.getProbability() ).intValue(), shape );
+    }
+
+    /**
+     * Constructs the Linear index.
+     * @param estimatedPopulation the estimated number of Bloom filters to index.
+     * @param shape the shape of the bloom filters.
+     */
+    public Linear(int estimatedPopulation, Shape shape) {
         this.shape = shape;
-        list = new ArrayList<BloomFilter>();
+        list = new ArrayList<BloomFilter>(estimatedPopulation);
         empty = new BitSet(0);
     }
 
@@ -114,15 +128,15 @@ public class Linear implements Index {
     }
 
     @Override
-    public Stream<Integer> search(Hasher hasher) {
-        List<Integer> result = new ArrayList<Integer>();
+    public Set<Integer> search(Hasher hasher) {
+        Set<Integer> result = new HashSet<Integer>();
         BloomFilter bf = new EWAHBloomFilter(hasher, shape);
         for (int i = 0; i < list.size(); i++) {
             if (list.get(i).contains(bf)) {
                 result.add(i);
             }
         }
-        return result.stream();
+        return result;
     }
 
 }

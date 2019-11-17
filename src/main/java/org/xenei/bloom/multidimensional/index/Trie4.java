@@ -1,6 +1,5 @@
 package org.xenei.bloom.multidimensional.index;
 
-import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 import org.xenei.bloom.multidimensional.index.tri.Trie;
 
@@ -32,10 +31,19 @@ public class Trie4 extends Trie {
 
     /**
      * Constructs a Trie4.
+     * Uses 1/shape.getProbability() as the estimated number of filters.
      * @param shape the shape of the contained Bloom filters.
      */
     public Trie4(Shape shape) {
-        super(shape, CHUNK_SIZE, MASK);
+        super(Double.valueOf( 1.0/shape.getProbability() ).intValue(), shape, CHUNK_SIZE, MASK);
+    }
+    /**
+     * Constructs a Trie4.
+     * @param estimatedPopulation the estimated number of Bloom filters to index.
+     * @param shape the shape of the contained Bloom filters.
+     */
+    public Trie4(int estimatedPopulation, Shape shape) {
+        super(estimatedPopulation, shape, CHUNK_SIZE, MASK);
     }
 
     @Override

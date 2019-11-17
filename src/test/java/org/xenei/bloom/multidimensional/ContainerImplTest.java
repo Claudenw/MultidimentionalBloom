@@ -27,7 +27,7 @@ public class ContainerImplTest {
         Hasher hasher = Factory.DEFAULT.useFunction(Murmur128.NAME).with(test).build();
         container.put(hasher, test);
         List<String> lst = new ArrayList<String>();
-        container.get(hasher).forEach(lst::add);
+        container.get(hasher).forEachRemaining(lst::add);
         assertEquals(1, lst.size());
         assertEquals(test, lst.get(0));
     }
@@ -46,7 +46,7 @@ public class ContainerImplTest {
         add("Now is the time for all good men to come to the aid of their country");
 
         List<String> lst = new ArrayList<String>();
-        container.get(hasher).forEach(lst::add);
+        container.get(hasher).forEachRemaining(lst::add);
         assertEquals(1, lst.size());
         assertEquals(test, lst.get(0));
     }
@@ -73,11 +73,11 @@ public class ContainerImplTest {
 
         Hasher hasher = makeHasher("Just another dog");
         List<String> lst = new ArrayList<String>();
-        container.get(hasher).forEach(lst::add);
+        container.get(hasher).forEachRemaining(lst::add);
         assertEquals(0, lst.size());
 
         hasher = makeHasher("World");
-        container.search(hasher).forEach(lst::add);
+        container.search(hasher).forEachRemaining(lst::add);
         assertEquals(2, lst.size());
         assertEquals(test, lst.get(0));
         assertEquals(test3, lst.get(1));
@@ -91,19 +91,19 @@ public class ContainerImplTest {
         add("Now is the time for all good men to come to the aid of their country");
 
         List<String> lst = new ArrayList<String>();
-        container.get(hasher).forEach(lst::add);
+        container.get(hasher).forEachRemaining(lst::add);
         assertEquals(1, lst.size());
         assertEquals(test, lst.get(0));
 
         container.remove(hasher, "Hello World too");
         lst = new ArrayList<String>();
-        container.get(hasher).forEach(lst::add);
+        container.get(hasher).forEachRemaining(lst::add);
         assertEquals(1, lst.size());
         assertEquals(test, lst.get(0));
 
         container.remove(hasher, "Hello World");
         lst = new ArrayList<String>();
-        container.get(hasher).forEach(lst::add);
+        container.get(hasher).forEachRemaining(lst::add);
         assertEquals(0, lst.size());
 
     }

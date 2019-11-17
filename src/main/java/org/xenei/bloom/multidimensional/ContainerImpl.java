@@ -1,10 +1,11 @@
 package org.xenei.bloom.multidimensional;
 
+import java.util.Collections;
 import java.util.Iterator;
-import java.util.stream.Stream;
 
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.Hasher;
+import org.apache.commons.collections4.iterators.LazyIteratorChain;
 import org.xenei.bloom.filter.EWAHBloomFilter;
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 import org.apache.commons.collections4.bloomfilter.CountingBloomFilter;
@@ -42,18 +43,35 @@ public class ContainerImpl<E> implements Container<E> {
 
     /**
      * Constructs a Container.
+     * Uses 1/shape.getProbability() as the estimated population.
      * @param shape the shape of the Bloom filter.
      * @param storage the storage for the objects
      * @param index the index for the bloom filter.
      */
     public ContainerImpl(Shape shape, Storage<E> storage, Index index) {
+        this( Double.valueOf( 1/shape.getProbability()).intValue(), shape, storage, index);
+    }
+
+    /**
+     * Constructs a Container.
+     * <p>
+     * This Container implementation is sensitive to the estimated population.  The
+     * estimated population is used to create a Bloom filter that gates the index. If
+     * the estimated population is too small additional overhead is consumed when putting
+     * objects into the container as additional searches are performed.
+     * </p>
+     * @param estimatedPopulation the estimated number of objects in the container.
+     * @param shape the shape of the Bloom filter.
+     * @param storage the storage for the objects
+     * @param index the index for the bloom filter.
+     */
+    public ContainerImpl(int estimatedPopulation, Shape shape, Storage<E> storage, Index index) {
         this.shape = shape;
         this.storage = storage;
         this.index = index;
         this.valueCount = 0;
         this.filterCount = 0;
-        int gateCount = (int) (1 / shape.getProbability());
-        Shape gateShape = new Shape(shape.getHashFunctionName(), gateCount, shape.getProbability());
+        Shape gateShape = new Shape(shape.getHashFunctionName(), estimatedPopulation, shape.getProbability());
         gate = new CountingBloomFilter(gateShape);
     }
 
@@ -73,25 +91,25 @@ public class ContainerImpl<E> implements Container<E> {
     }
 
     @Override
-    public Stream<E> get(Hasher hasher) {
+    public Iterator<E> get(Hasher hasher) {
         verifyHasher(hasher);
 
         if (gate.contains(hasher)) {
             int idx = index.get(hasher);
             if (idx == -1) {
-                return Container.emptyStream();
+                return Collections.emptyIterator();
             }
-            return storage.get(idx);
+            return storage.get(idx).iterator();
         }
-        return Container.emptyStream();
+        return Collections.emptyIterator();
     }
 
     @Override
     public void put(Hasher hasher, E value) {
         verifyHasher(hasher);
+        boolean possibleDuplicate = gate.contains( hasher );
         gate.merge(hasher);
-
-        int idx = index.get(hasher);
+        int idx = possibleDuplicate? index.get(hasher) : -1;
         if (idx == -1) {
             idx = index.put(hasher);
             filterCount++;
@@ -123,7 +141,7 @@ public class ContainerImpl<E> implements Container<E> {
     }
 
     @Override
-    public Stream<E> search(Hasher hasher) {
+    public Iterator<E> search(Hasher hasher) {
         verifyHasher(hasher);
         return doSearch(hasher);
     }
@@ -133,16 +151,17 @@ public class ContainerImpl<E> implements Container<E> {
      * @param hasher the hasher to search with.
      * @return the stream of matchign objects.
      */
-    private Stream<E> doSearch(Hasher hasher) {
+    private Iterator<E> doSearch(Hasher hasher) {
         if (gate.contains(hasher)) {
-            Stream<E> result = Container.emptyStream();
-            Iterator<Stream<E>> iter = index.search(hasher).map(storage::get).iterator();
-            while (iter.hasNext()) {
-                result = Stream.concat(result, iter.next());
-            }
-            return result;
+            Iterator<Integer> iter = index.search(hasher).iterator();
+            return new LazyIteratorChain<E>() {
+                     @Override
+                    protected Iterator<E> nextIterator(int count) {
+                         return iter.hasNext() ? storage.get(iter.next()).iterator() : null;
+                    }
+                 };
         }
-        return Container.emptyStream();
+        return Collections.emptyListIterator();
 
     }
 

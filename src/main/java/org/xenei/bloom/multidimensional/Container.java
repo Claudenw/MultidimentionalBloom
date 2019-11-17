@@ -1,8 +1,11 @@
 package org.xenei.bloom.multidimensional;
 
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
@@ -34,11 +37,11 @@ public interface Container<E> {
     Shape getShape();
 
     /**
-     * Gets a stream of stored objects that have matching filters.
-     * @param filter the filter to match.
+     * Gets an iterator of stored objects that have matching filters.
+     * @param hasher the filter to match.
      * @return a stream of stored objects
      */
-    Stream<E> get(Hasher filter);
+    Iterator<E> get(Hasher hasher);
 
     /**
      * Puts an object into the container.
@@ -59,9 +62,9 @@ public interface Container<E> {
     /**
      * Searches the container for matching objects.
      * @param hasher the Hasher that generates hash values to create the Bloom filter to locate the values with.
-     * @return a stream of stored objects that match the Bloom filter created by the hasher.
+     * @return an iterator of stored objects that match the Bloom filter created by the hasher.
      */
-    Stream<E> search(Hasher hasher);
+    Iterator<E> search(Hasher hasher);
 
     /**
      * A static method to create an empty stream.
@@ -69,8 +72,7 @@ public interface Container<E> {
      * @return an empty stream.
      */
     public static <E> Stream<E> emptyStream() {
-        List<E> lst = Collections.emptyList();
-        return lst.stream();
+       return Stream.empty();
     }
 
     /**
@@ -114,9 +116,9 @@ public interface Container<E> {
          * Search for matching filters.
          *
          * @param hasher the hasher to search for.
-         * @return an iterator of storage indexes.
+         * @return the set of storage indexes.
          */
-        Stream<Integer> search(Hasher hasher);
+        Set<Integer> search(Hasher hasher);
     }
 
     /**
@@ -141,7 +143,7 @@ public interface Container<E> {
          * @param idx the storage index.
          * @return a stream of E from the storage index.
          */
-        Stream<E> get(int idx);
+        Collection<E> get(int idx);
 
         /**
          * Puts an object in the collection at the storage index.
@@ -167,6 +169,6 @@ public interface Container<E> {
          *
          * @return a stream of all the elements.
          */
-        Stream<Map.Entry<Integer, List<E>>> list();
+        Iterator<Map.Entry<Integer, List<E>>> list();
     }
 }

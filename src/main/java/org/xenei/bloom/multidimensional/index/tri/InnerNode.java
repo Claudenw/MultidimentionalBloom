@@ -1,9 +1,6 @@
 package org.xenei.bloom.multidimensional.index.tri;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Stream;
-
+import java.util.Set;
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
 
 /**
@@ -25,10 +22,6 @@ public class InnerNode implements Node {
      * zero based counting.
      */
     private final int level;
-    /**
-     * The maximum depth of the trie.  zero based.
-     */
-    private final int maxDepth;
 
     /**
      * The parent node.
@@ -45,7 +38,6 @@ public class InnerNode implements Node {
         this.trie = trie;
         this.level = level;
         this.parent = parent;
-        this.maxDepth = (int) Math.ceil(trie.getShape().getNumberOfBits() * 1.0 / trie.getChunkSize());
         this.nodes = new Node[1 << trie.getChunkSize()];
     }
 
@@ -55,7 +47,7 @@ public class InnerNode implements Node {
      * @return true if this is a  base node.
      */
     public boolean isBaseNode() {
-        return level + 1 == maxDepth;
+        return level + 1 == trie.getMaxDepth();
     }
 
     /**
@@ -71,7 +63,7 @@ public class InnerNode implements Node {
     public LeafNode add(IndexedBloomFilter filter) {
         int chunk = trie.getChunk(filter.getFilter(), level);
         if (nodes[chunk] == null) {
-            if ((level + 1) == maxDepth) {
+            if ((level + 1) == trie.getMaxDepth()) {
                 nodes[chunk] = new LeafNode(filter.getIdx(), this);
             } else {
                 nodes[chunk] = new InnerNode(level + 1, trie, this);
@@ -99,33 +91,26 @@ public class InnerNode implements Node {
     }
 
     /**
-     * Searches this inner node and return the stream of Bloom filter index values from the leaf
+     * Searches this inner node and populate the set of Bloom filter index values from the leaf
      * nodes.
-     * This method must create a stream of matching indexes from the nodes below it and concatenate that
-     * to the previous stream and then return the result.
-     * @param previous The stream from the previously searched inner nodes.
+     * @param indexes The set of Bloom filter indexes.
      * @param filter the filter we are looking for.
-     * @return the Stream of integers that are indexes to matching Bloom filters.
      */
-    public Stream<Integer> search(Stream<Integer> previous, BloomFilter filter) {
+    public void search(Set<Integer> indexes, BloomFilter filter) {
         int[] nodeIdxs = trie.getNodeIndexes(trie.getChunk(filter, level));
-        Stream<Integer> result = previous;
         if (isBaseNode()) {
-            List<Integer> newVals = new ArrayList<Integer>();
             for (int i : nodeIdxs) {
                 if (nodes[i] != null) {
-                    newVals.add(((LeafNode) nodes[i]).getIdx());
+                    indexes.add(((LeafNode) nodes[i]).getIdx());
                 }
             }
-            result = Stream.concat(previous, newVals.stream());
         } else {
             for (int i : nodeIdxs) {
                 if (nodes[i] != null) {
-                    result = ((InnerNode) nodes[i]).search(result, filter);
+                    ((InnerNode) nodes[i]).search(indexes, filter);
                 }
             }
         }
-        return result;
     }
 
     @Override

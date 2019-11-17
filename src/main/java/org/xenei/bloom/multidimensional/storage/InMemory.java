@@ -1,12 +1,12 @@
 package org.xenei.bloom.multidimensional.storage;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.stream.Stream;
-
-import org.xenei.bloom.multidimensional.Container;
 import org.xenei.bloom.multidimensional.Container.Storage;
 
 public class InMemory<E> implements Storage<E> {
@@ -14,11 +14,12 @@ public class InMemory<E> implements Storage<E> {
     private HashMap<Integer, List<E>> storage = new HashMap<Integer, List<E>>();
 
     @Override
-    public Stream<E> get(int idx) {
-        if (idx < 0 || storage.get(idx) == null) {
-            return Container.emptyStream();
+    public Collection<E> get(int idx) {
+        if (idx < 0) {
+            return Collections.emptyList();
         }
-        return storage.get(idx).stream();
+        Collection<E> result = storage.get(idx);
+        return result == null ? Collections.emptyList() : result;
     }
 
     @Override
@@ -53,8 +54,8 @@ public class InMemory<E> implements Storage<E> {
     }
 
     @Override
-    public Stream<Entry<Integer, List<E>>> list() {
-        return storage.entrySet().stream();
+    public Iterator<Entry<Integer, List<E>>> list() {
+        return storage.entrySet().iterator();
     }
 
 }

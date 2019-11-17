@@ -2,13 +2,10 @@ package org.xenei.bloom.multidimensional.index;
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.PrimitiveIterator;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
-import java.util.stream.Stream;
-
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.xenei.bloom.multidimensional.Container.Index;
@@ -32,15 +29,13 @@ public final class FlatBloofi implements Index {
 
     /**
      * A list of buffers.
-     * Each entry in the buffer is associated with a bit in the bloom filter, so the index to the buffer
-     * is the bit position.  Each long[] stored at the index is a bitmap of indexed entries that have that
-     * bit enabled.
+     * Each entry in the buffer is 64 filters.
+     * Each long in the long[] is a bit in the bloom filter.
      */
     private ArrayList<long[]> buffer;
 
     /**
-     * A bitset that indicates which bits in the long[] buffers are in use.  Thus this tracks the
-     * deleted filters through its negative space.
+     * A bitset that indicates which entries are in use. entry/64 = buffer index.
      */
     private BitSet busy;
 
@@ -50,7 +45,7 @@ public final class FlatBloofi implements Index {
      */
     public FlatBloofi(Shape shape) {
         this.shape = shape;
-        this.buffer = new ArrayList<long[]>(0);
+        this.buffer = new ArrayList<long[]>();
         this.busy = new BitSet(0);
     }
 
@@ -134,8 +129,8 @@ public final class FlatBloofi implements Index {
     }
 
     @Override
-    public Stream<Integer> search(Hasher hasher) {
-        List<Integer> answer = new ArrayList<Integer>();
+    public Set<Integer> search(Hasher hasher) {
+        Set<Integer> answer = new HashSet<Integer>();
         for (int i = 0; i < buffer.size(); ++i) {
             long w = ~0l;
             PrimitiveIterator.OfInt iter = hasher.getBits(shape);
@@ -148,7 +143,7 @@ public final class FlatBloofi implements Index {
                 w ^= t;
             }
         }
-        return answer.stream();
+        return answer;
     }
 
 }
