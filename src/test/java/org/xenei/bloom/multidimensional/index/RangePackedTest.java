@@ -16,7 +16,7 @@ public class RangePackedTest {
 
             @Override
             public RangePacked newInstance() {
-                return new RangePacked(IndexTest.shape);
+                return new RangePacked(IndexTest.SHAPE);
             }
 
             @Override

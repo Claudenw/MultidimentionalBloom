@@ -2,13 +2,16 @@ package org.xenei.bloom.filter;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.Iterator;
 
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 import org.apache.commons.collections4.bloomfilter.hasher.DynamicHasher;
 import org.apache.commons.collections4.bloomfilter.hasher.MD5;
+import org.apache.commons.collections4.bloomfilter.hasher.ObjectsHash;
 import org.junit.Test;
 
 public class CachingHasherTest {
@@ -29,5 +32,27 @@ public class CachingHasherTest {
         assertFalse("Caching iterator has too many values", iter1.hasNext());
 
     }
+
+    @Test
+    public void testInvalidName() {
+        try {
+            new CachingHasher.Builder(ObjectsHash.NAME, new ObjectsHash());
+            fail( "Should have thrown IllegalArgumentException");
+        }
+        catch (IllegalArgumentException e)
+        {
+            // exected do nothing.
+        }
+        try {
+            new CachingHasher(ObjectsHash.NAME, new long[][] {{1L, 2L}});
+            fail( "Should have thrown IllegalArgumentException");
+        }
+        catch (IllegalArgumentException e)
+        {
+            // exected do nothing.
+        }
+
+    }
+
 
 }

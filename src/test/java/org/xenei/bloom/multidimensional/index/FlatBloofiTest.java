@@ -16,7 +16,7 @@ public class FlatBloofiTest {
 
             @Override
             public FlatBloofi newInstance() {
-                return new FlatBloofi(IndexTest.shape);
+                return new FlatBloofi(IndexTest.SHAPE);
             }
 
             @Override

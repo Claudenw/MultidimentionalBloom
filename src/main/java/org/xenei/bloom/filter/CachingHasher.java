@@ -40,10 +40,10 @@ import org.apache.commons.collections4.bloomfilter.hasher.Murmur128;
  * The class that performs hashing on demand. Items can be added to the hasher
  * using the {@code with()} methods. once {@code getBits()} method is called it
  * is an error to call {@code with()} again.
- *
- * This hasher will convert iterative hashes into cyclic hashes.
- *
- * @since 4.5
+ * <p>
+ * This hasher can only produce cyclic hash values. Any hash method may be passed to the constructor
+ * however, the name must specify a Cyclic hash (i.e. the last character of the name must be 'C').
+ * </p>
  */
 public class CachingHasher implements Hasher {
 
@@ -63,8 +63,10 @@ public class CachingHasher implements Hasher {
      * @param name     the name for the function.
      * @param function the function to use.
      * @param buffers  the byte buffers that will be hashed.
+     * @throws IllegalArgumentException if the name does not indicate a cyclic hashing function.
      */
     public CachingHasher(String name, List<long[]> buffers) {
+        checkName(name);
         this.buffers = new ArrayList<long[]>(buffers);
         this.name = name;
     }
@@ -75,16 +77,22 @@ public class CachingHasher implements Hasher {
      * @param name     the name for the function.
      * @param function the function to use.
      * @param buffers  the byte buffers that will be hashed.
+     * @throws IllegalArgumentException if the name does not indicate a cyclic hashing function.
      */
     public CachingHasher(String name, long[][] buffers) {
+        checkName( name );
         this.buffers = Arrays.asList(buffers);
-        if (name.endsWith("C"))
+        this.name = name;
+    }
+
+    /**
+     * Check that the name is valid for this hasher.
+     * @param name the name to check.
+     */
+    private static void checkName(String name) {
+        if (!name.endsWith("C"))
         {
-            this.name = name;
-        }
-        else
-        {
-            this.name = name.substring(0,name.length()-2)+"C";
+            throw new IllegalArgumentException( "Only cyclic hash functions may be used in a caching hasher");
         }
     }
 
@@ -208,6 +216,10 @@ public class CachingHasher implements Hasher {
          */
         protected void register(String name, Class<? extends ToLongBiFunction<byte[], Integer>> functionClass)
                 throws NoSuchMethodException, SecurityException {
+            if ( ! name.endsWith( "C" ) )
+            {
+                throw new IllegalArgumentException( "Only cyclic functions may be used in a caching hasher");
+            }
             Constructor<? extends ToLongBiFunction<byte[], Integer>> c = functionClass.getConstructor();
             funcMap.put(name, c);
         }
@@ -257,8 +269,10 @@ public class CachingHasher implements Hasher {
          *
          * @param name     the name of the function.
          * @param function the function implementation.
+         * @throws IllegalArgumentException if the name does not indicate a cyclic method.
          */
         public Builder(String name, ToLongBiFunction<byte[], Integer> function) {
+            checkName( name );
             this.name = name;
             this.function = function;
             this.buffers = new ArrayList<byte[]>();

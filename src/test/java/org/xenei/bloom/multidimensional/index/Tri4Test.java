@@ -15,7 +15,7 @@ public class Tri4Test {
 
             @Override
             public Trie4 newInstance() {
-                return new Trie4(IndexTest.shape);
+                return new Trie4(IndexTest.SHAPE);
             }
 
             @Override

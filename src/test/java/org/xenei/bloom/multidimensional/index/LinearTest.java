@@ -16,7 +16,7 @@ public class LinearTest {
 
             @Override
             public Linear newInstance() {
-                return new Linear(IndexTest.shape);
+                return new Linear(IndexTest.SHAPE);
             }
 
             @Override

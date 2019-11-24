@@ -16,7 +16,7 @@ public class Tri8Test {
 
             @Override
             public Trie8 newInstance() {
-                return new Trie8(IndexTest.shape);
+                return new Trie8(IndexTest.SHAPE);
             }
 
             @Override
