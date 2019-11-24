@@ -40,7 +40,9 @@ import org.apache.commons.collections4.bloomfilter.hasher.Murmur128;
  * The class that performs hashing on demand. Items can be added to the hasher
  * using the {@code with()} methods. once {@code getBits()} method is called it
  * is an error to call {@code with()} again.
- * 
+ *
+ * This hasher will convert iterative hashes into cyclic hashes.
+ *
  * @since 4.5
  */
 public class CachingHasher implements Hasher {
@@ -76,7 +78,14 @@ public class CachingHasher implements Hasher {
      */
     public CachingHasher(String name, long[][] buffers) {
         this.buffers = Arrays.asList(buffers);
-        this.name = name;
+        if (name.endsWith("C"))
+        {
+            this.name = name;
+        }
+        else
+        {
+            this.name = name.substring(0,name.length()-2)+"C";
+        }
     }
 
     @Override
@@ -149,7 +158,7 @@ public class CachingHasher implements Hasher {
 
     /**
      * A factory that produces DynamicHasher Builders.
-     * 
+     *
      * @since 4.5
      */
     public static class Factory implements Hasher.Factory {
@@ -224,7 +233,7 @@ public class CachingHasher implements Hasher {
 
     /**
      * The builder for DyanamicHashers.
-     * 
+     *
      * @since 4.5
      */
     public static class Builder implements Hasher.Builder {
