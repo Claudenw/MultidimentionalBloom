@@ -17,11 +17,13 @@
  */
 package org.xenei.bloom.multidimensional.index;
 
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
@@ -29,16 +31,15 @@ import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.xenei.bloom.filter.EWAHBloomFilter;
 import org.xenei.bloom.multidimensional.Container.Index;
 
-import com.googlecode.javaewah.datastructure.BitSet;
-
 /**
  * A linear implementation of an index.
  * <p>
  * This implementation is adequate for smallish populations.  Large populations with
  * high collision rates will see significant performance degredation.
  * </p>
+ * @param <I> The index type
  */
-public class Linear implements Index {
+public class Linear<I> implements Index<I> {
     /**
      * The shape of the bloom filters.
      */
@@ -46,11 +47,12 @@ public class Linear implements Index {
     /**
      * The list of bloom filters.
      */
-    private List<BloomFilter> list;
+    private Map<I,BloomFilter> data;
+
     /**
-     * A bitset that tracks which entries in the list are empty (available for resuse).
+     * Function to convert BloomFilter to index.
      */
-    private BitSet empty;
+    private final Function<BloomFilter,I> func;
 
     /**
      * A comparator for bloom filters to determine if they are bit for bit identical.
@@ -90,70 +92,52 @@ public class Linear implements Index {
     /**
      * Constructs the Linear index.
      * Uses 1/shape.getProbability() as the estimated number of filters.
+     * @param func The function to convert bloom filter to index object.
      * @param shape the shape of the bloom filters.
      */
-    public Linear(Shape shape) {
-        this( Double.valueOf( 1.0/shape.getProbability() ).intValue(), shape );
+    public Linear(Function<BloomFilter,I> func, Shape shape) {
+        this( func, Double.valueOf( 1.0/shape.getProbability() ).intValue(), shape );
     }
 
     /**
      * Constructs the Linear index.
+     * @param func The function to convert bloom filter to index object.
      * @param estimatedPopulation the estimated number of Bloom filters to index.
      * @param shape the shape of the bloom filters.
      */
-    public Linear(int estimatedPopulation, Shape shape) {
+    public Linear(Function<BloomFilter,I> func, int estimatedPopulation, Shape shape) {
         this.shape = shape;
-        list = new ArrayList<BloomFilter>(estimatedPopulation);
-        empty = new BitSet(0);
+        this.func = func;
+        data = new HashMap<I,BloomFilter>(estimatedPopulation);
     }
 
     @Override
-    public int get(Hasher hasher) {
+    public Optional<I> get(Hasher hasher) {
         BloomFilter bf = new EWAHBloomFilter(hasher, shape);
-        for (int i = 0; i < list.size(); i++) {
-            if (comp.compare(list.get(i), bf) == 0) {
-                return i;
-            }
-        }
-        return -1;
+        return data.entrySet().stream()
+                .filter( entry -> {return comp.compare(entry.getValue(), bf) == 0;})
+                .map( Map.Entry::getKey ).findFirst();
     }
 
     @Override
-    public int put(Hasher hasher) {
+    public I put(Hasher hasher) {
         BloomFilter filter = new EWAHBloomFilter(hasher, shape);
-        int idx = empty.nextSetBit(-1);
-        if (idx == -1) {
-            list.add(filter);
-            idx = list.size() - 1;
-        } else {
-            list.set(idx, filter);
-            empty.unset(idx);
-            if (empty.cardinality() == 0) {
-                empty.resize(0);
-            }
-        }
-        return idx;
-    }
-
-    @Override
-    public void remove(int index) {
-        list.set(index, null);
-        if (empty.size() <= index) {
-            empty.resize(index + 1);
-        }
-        empty.set(index);
-    }
-
-    @Override
-    public Set<Integer> search(Hasher hasher) {
-        Set<Integer> result = new HashSet<Integer>();
-        BloomFilter bf = new EWAHBloomFilter(hasher, shape);
-        for (int i = 0; i < list.size(); i++) {
-            if (list.get(i).contains(bf)) {
-                result.add(i);
-            }
-        }
+        I result = func.apply( filter );
+        data.put(result, filter);
         return result;
+    }
+
+    @Override
+    public void remove(I index) {
+        data.remove(index);
+    }
+
+    @Override
+    public Set<I> search(Hasher hasher) {
+        BloomFilter bf = new EWAHBloomFilter(hasher, shape);
+        return data.entrySet().stream()
+                .filter( entry -> {return entry.getValue().contains(bf);})
+                .map( Map.Entry::getKey ).collect( Collectors.toSet() );
     }
 
 }

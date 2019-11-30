@@ -19,15 +19,25 @@ package org.xenei.bloom.multidimensional.index;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
+
+import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 import org.xenei.bloom.multidimensional.index.tri.Trie;
 
 /**
  * A Trie index that uses 8 bit bytes as chunks.
- *
+ * <ul>
+ * <li>m = number of bits in the bloom filter</li>
+ * <li>N = number of unique filters stored in the trie.</li>
+ * <li>Insert costs: O( m/8 )</li>
+ * <li>Search costs: O( 1.5^8 * m/8 ) = O( 25.6289 * m/8 )
+ * <li>Memory requirements: O(2^8 * m/8 * N) = O(32Nm)</li>
+ * </ul>
  * @see Trie
+ * @param <I> The index type
  */
-public class Trie8 extends Trie {
+public class Trie8<I> extends Trie<I> {
     /**
      * The size of the chunks.
      */
@@ -65,19 +75,21 @@ public class Trie8 extends Trie {
     /**
      * Constructs a Trie8.
      * Uses 1/shape.getProbability() as the estimated number of filters.
+     * @param func the function to convert Bloom filter to index object.
      * @param shape the shape of the contained Bloom filters.
      */
-    public Trie8(Shape shape) {
-        super(Double.valueOf( 1.0/shape.getProbability() ).intValue(), shape, CHUNK_SIZE, MASK);
+    public Trie8(Function<BloomFilter,I> func, Shape shape) {
+        super(func, Double.valueOf( 1.0/shape.getProbability() ).intValue(), shape, CHUNK_SIZE, MASK);
     }
 
     /**
      * Constructs a Trie8
+     * @param func the function to convert Bloom filter to index object.
      * @param the estimated number of Bloom filters to be indexed.
      * @param shape the shape of the contained Bloom filters.
      */
-    public Trie8(int estimatedPopulation, Shape shape) {
-        super(Double.valueOf( 1.0/shape.getProbability() ).intValue(), shape, CHUNK_SIZE, MASK);
+    public Trie8(Function<BloomFilter,I> func, int estimatedPopulation, Shape shape) {
+        super(func, Double.valueOf( 1.0/shape.getProbability() ).intValue(), shape, CHUNK_SIZE, MASK);
     }
 
 

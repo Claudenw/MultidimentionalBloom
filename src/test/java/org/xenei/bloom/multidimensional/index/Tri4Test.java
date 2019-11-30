@@ -17,8 +17,11 @@
  */
 package org.xenei.bloom.multidimensional.index;
 
+import java.util.UUID;
+
 import org.junit.runner.RunWith;
 import org.xenei.junit.contract.Contract.Inject;
+import org.xenei.bloom.multidimensional.ContainerImplTest;
 import org.xenei.junit.contract.ContractImpl;
 import org.xenei.junit.contract.ContractSuite;
 import org.xenei.junit.contract.IProducer;
@@ -27,12 +30,12 @@ import org.xenei.junit.contract.IProducer;
 @RunWith(ContractSuite.class)
 public class Tri4Test {
     @Inject
-    public IProducer<Trie4> getProducer() {
-        return new IProducer<Trie4>() {
+    public IProducer<Trie4<UUID>> getProducer() {
+        return new IProducer<Trie4<UUID>>() {
 
             @Override
-            public Trie4 newInstance() {
-                return new Trie4(IndexTest.SHAPE);
+            public Trie4<UUID> newInstance() {
+                return new Trie4<UUID>(new ContainerImplTest.Func(),IndexTest.SHAPE);
             }
 
             @Override

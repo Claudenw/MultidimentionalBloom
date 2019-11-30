@@ -20,9 +20,13 @@ package org.xenei.bloom.multidimensional.index.tri;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.commons.collections4.bloomfilter.BitSetBloomFilter;
@@ -31,17 +35,23 @@ import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 import org.xenei.bloom.multidimensional.Container.Index;
 
-import com.googlecode.javaewah.datastructure.BitSet;
-
 /**
- * An asbtract Trie implementation.
+ * An abstract Trie implementation.
  *
  * Bloom filters are chunked and each chunk is used to determine a leaf node where the filter is stored.
  * When searching each chunk is expanded into the matching chunks as per the Bloom filter matching
  * algorithm and all branches explored.
- *
+ * <ul>
+ * <li>m = number of bits in the bloom filter</li>
+ * <li>N = number of unique filters stored in the trie.</li>
+ * <li>c = chunk size
+ * <li>Insert costs: O( m/c )</li>
+ * <li>Search costs: O( 1.5^c *m/c )
+ * <li>Memory requirements: O(2^c * m/c * N)</li>
+ * </ul>
+ * @param <I> The index type
  */
-public abstract class Trie implements Index {
+public abstract class Trie<I> implements Index<I> {
 
     /**
      * The shape of the contained Bloom filters.
@@ -50,16 +60,12 @@ public abstract class Trie implements Index {
     /**
      * A list of all leaf nodes created in the system
      */
-    private final List<LeafNode> list;
-    /**
-     * A bitset that indicates the leaf nodes in the list that have been deleted (set to null).
-     * This is used for deletion and to reuse list entries.
-     */
-    private final BitSet empty;
+    private final Map<I, LeafNode<I>> data;
+
     /**
      * The root node of the Trie.
      */
-    private InnerNode root;
+    private InnerNode<I> root;
     /**
      * The size of the chunks in the Trie in bits.
      */
@@ -68,6 +74,10 @@ public abstract class Trie implements Index {
      * The mask for a single chunk.
      */
     private final long mask;
+    /**
+     * Function to convert Hasher to index.
+     */
+    private final Function<BloomFilter,I> func;
 
     /**
      * Constructs a Trie.
@@ -76,13 +86,13 @@ public abstract class Trie implements Index {
      * @param chunkSize the size of the Trie chunks in bits.
      * @param mask the mask to extract a single chunk.
      */
-    protected Trie(int estimatedPopulation, Shape shape, int chunkSize, long mask) {
+    protected Trie(Function<BloomFilter,I> func,int estimatedPopulation, Shape shape, int chunkSize, long mask) {
+        this.func = func;
         this.shape = shape;
         this.chunkSize = chunkSize;
         this.mask = mask;
-        this.list = new ArrayList<LeafNode>(estimatedPopulation);
-        this.empty = new BitSet(0);
-        root = new InnerNode(0, this, null);
+        this.data = new HashMap<I, LeafNode<I>>(estimatedPopulation);
+        root = new InnerNode<I>(0, this, null);
     }
     /**
      * Returns the matching nodes for a specific level in the Trie.
@@ -103,53 +113,39 @@ public abstract class Trie implements Index {
     }
 
     @Override
-    public final int put(Hasher hasher) {
-        int idx = empty.nextSetBit(-1);
-        if (idx == -1) {
-            idx = list.size();
-            list.add(null);
-        } else {
-            empty.unset(idx);
-            if (empty.cardinality() == 0) {
-                empty.resize(0);
-            }
-        }
-
+    public final I put(Hasher hasher) {
         BloomFilter filter = new BitSetBloomFilter(hasher, shape);
-        IndexedBloomFilter idxFilter = new IndexedBloomFilter(filter, idx);
-        list.set(idx, root.add(idxFilter));
-        return idx;
+        LeafNode<I> leafNode = root.add( filter );
+        data.put(leafNode.getIdx(), leafNode);
+        return leafNode.getIdx();
     }
 
     @Override
-    public final void remove(int index) {
-        LeafNode leaf = list.get(index);
-        if (leaf != null) {
+    public final void remove(I index) {
+        LeafNode<I> leaf = data.get(index);
+        if (leaf != null)
+        {
             leaf.delete();
-            if (empty.size() <= index) {
-                empty.resize(index + 1);
-            }
-            empty.set(index);
         }
     }
 
     @Override
-    public final Set<Integer> search(Hasher hasher) {
+    public final Set<I> search(Hasher hasher) {
         BloomFilter filter = new BitSetBloomFilter(hasher, shape);
-        Set<Integer> result = new HashSet<Integer>();
+        Set<I> result = new HashSet<I>();
         root.search(result, filter);
         return result;
     }
 
     @Override
-    public int get(Hasher hasher) {
+    public Optional<I> get(Hasher hasher) {
         BloomFilter filter = new BitSetBloomFilter(hasher, shape);
         long[] filterLongs = filter.getBits();
-        List<LeafNode> candidates = search(hasher).stream().map(list::get).filter(l -> l != null).collect(Collectors.toList());
-        int result = Index.NOT_FOUND;
-        for (LeafNode leaf : candidates) {
-            List<InnerNode> lst = new ArrayList<InnerNode>();
-            Node n = leaf;
+        List<LeafNode<I>> candidates = search(hasher).stream().map(data::get).filter(l -> l != null).collect(Collectors.toList());
+        I result = null;
+        for (LeafNode<I> leaf : candidates) {
+            List<InnerNode<I>> lst = new ArrayList<InnerNode<I>>();
+            Node<I> n = leaf;
             while (n.getParent() != null) {
                 lst.add(n.getParent());
                 n = n.getParent();
@@ -157,14 +153,14 @@ public abstract class Trie implements Index {
             Collections.reverse(lst);
             long[] values = assembleLongs(lst, leaf);
             if (Arrays.equals(values, filterLongs)) {
-                if (result != Index.NOT_FOUND) {
+                if (result != null) {
                     throw new IllegalStateException("Too many results");
                 }
                 result = leaf.getIdx();
             }
         }
 
-        return result;
+        return Optional.ofNullable(result);
 
     }
 
@@ -175,7 +171,7 @@ public abstract class Trie implements Index {
      * @param leaf the leaf node.
      * @return the long[] representation of the Bloom filter stored on the leaf.
      */
-    private long[] assembleLongs(List<InnerNode> nodes, LeafNode leaf) {
+    private long[] assembleLongs(List<InnerNode<I>> nodes, LeafNode<I> leaf) {
         int limit = Double.valueOf(Math.ceil(shape.getNumberOfBits() / (double) Long.SIZE)).intValue();
         long[] result = new long[limit];
 
@@ -222,6 +218,11 @@ public abstract class Trie implements Index {
     }
 
     public int getMaxDepth() {
-       return (int) Math.ceil(shape.getNumberOfBits() * 1.0 / getChunkSize());
+        return (int) Math.ceil(shape.getNumberOfBits() * 1.0 / getChunkSize());
+    }
+
+    public I makeIdx(BloomFilter filter)
+    {
+        return func.apply(filter);
     }
 }

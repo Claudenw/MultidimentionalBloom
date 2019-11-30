@@ -24,22 +24,22 @@ import org.apache.commons.collections4.bloomfilter.BloomFilter;
  * A leaf node contains a single Bloom filter index.
  *
  */
-public class LeafNode implements Node {
+public class LeafNode<I> implements Node<I> {
     /**
      * The index of the bloom filter in the Trie list.
      */
-    private final int idx;
+    private final I idx;
     /**
      * The inner node that points to this leaf.
      */
-    private final InnerNode parent;
+    private final InnerNode<I> parent;
 
     /**
      * Constructs a leaf node.
      * @param idx The index of the Bloom filter.
      * @param parent the InnerNode that points to this leaf.
      */
-    public LeafNode(int idx, InnerNode parent) {
+    public LeafNode(I idx, InnerNode<I> parent) {
         this.idx = idx;
         this.parent = parent;
     }
@@ -48,7 +48,7 @@ public class LeafNode implements Node {
      * Gets the Bloom filter index.
      * @return the Bloom filter index
      */
-    public int getIdx() {
+    public I getIdx() {
         return idx;
     }
 
@@ -58,7 +58,7 @@ public class LeafNode implements Node {
     }
 
     @Override
-    public LeafNode add(IndexedBloomFilter filter) {
+    public LeafNode<I> add(BloomFilter filter) {
         return this;
     }
 
@@ -76,7 +76,7 @@ public class LeafNode implements Node {
     }
 
     @Override
-    public InnerNode getParent() {
+    public InnerNode<I> getParent() {
         return parent;
     }
 

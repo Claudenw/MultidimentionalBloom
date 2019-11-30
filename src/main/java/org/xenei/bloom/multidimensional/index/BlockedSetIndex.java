@@ -21,16 +21,15 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.PrimitiveIterator;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 
+import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 import org.xenei.bloom.filter.EWAHBloomFilter;
 import org.xenei.bloom.multidimensional.Container.Index;
-import org.xenei.bloom.multidimensional.index.tri.InnerNode;
-import org.xenei.bloom.multidimensional.index.tri.LeafNode;
-
 import com.googlecode.javaewah.datastructure.BitSet;
 
 /**
@@ -43,14 +42,18 @@ import com.googlecode.javaewah.datastructure.BitSet;
  * The value 0 matches everything and is not stored as it provides no reduction
  * in scope.
  *
+ * @param <I> The index type
  */
-public class BlockedSetIndex implements Index {
+public class BlockedSetIndex<I> implements Index<I> {
 
     /**
      * The size of the chunks.
      */
     public static final int CHUNK_SIZE = Byte.SIZE;
 
+    /**
+     * The size of the block, number possible values.
+     */
     private static final int BLOCK_SIZE= (1<<Byte.SIZE)-1;
 
     /**
@@ -91,25 +94,44 @@ public class BlockedSetIndex implements Index {
      */
     private final BitSet[][] list;
 
+    /**
+     * A list of index values matching bitset mapping.
+     */
+    private final List<I> values;
+
+    /**
+     * Function to convert BloomFilter to index.
+     */
+    private final Function<BloomFilter,I> func;
+
+    /**
+     * A bitset representing the free/deleted entries in the list/values.
+     */
     private final BitSet empty;
 
+    /**
+     * The number of entries in the index.
+     */
     private volatile int count;
 
 
     /**
      * Constructs a BlockedSetIndex.
      * Uses 1/shape.getProbability() as the estimated number of filters.
+     * @param func the function to convert Bloom filter to index object.
      * @param shape the shape of the contained Bloom filters.
      */
-    public BlockedSetIndex(Shape shape) {
+    public BlockedSetIndex(Function<BloomFilter,I> func, Shape shape) {
+        this.func = func;
         this.shape = shape;
         this.list = new BitSet[shape.getNumberOfBytes()][BLOCK_SIZE];
         this.empty = new BitSet(0);
+        this.values = new ArrayList<I>();
         this.count = 0;
     }
 
     @Override
-    public int get(Hasher hasher) {
+    public Optional<I> get(Hasher hasher) {
         EWAHBloomFilter filter = new EWAHBloomFilter( hasher, shape );
         long[] bits = filter.getBits();
         BitSet answer = null;
@@ -132,13 +154,13 @@ public class BlockedSetIndex implements Index {
                     BitSet[] block = list[blockIdx];
                     if (block == null)
                     {
-                        return NOT_FOUND;
+                        return Optional.empty();
                     }
                     // add the ones we are looking for
                     BitSet bitSet = block[bitIdx-1];
                     if (bitSet == null)
                     {
-                        return NOT_FOUND;
+                        return Optional.empty();
                     } else  if (answer == null) {
                         answer = new BitSet( bitSet.size() );
                         answer.or( bitSet );
@@ -147,10 +169,10 @@ public class BlockedSetIndex implements Index {
                         answer.and( bitSet );
                         if (answer.empty())
                         {
-                            return NOT_FOUND;
+                            return Optional.empty();
                         }
                     }
-               }
+                }
             }
             // remove any
             for (int blockIdx : removeList )
@@ -171,11 +193,11 @@ public class BlockedSetIndex implements Index {
         if (answer.cardinality() > 1) {
             throw new IllegalStateException();
         }
-        return answer.nextSetBit(0);
+        return answer.nextSetBit(0)==-1 ? Optional.empty() : Optional.of( func.apply(filter));
     }
 
     @Override
-    public int put(Hasher hasher) {
+    public I put(Hasher hasher) {
         int idx = empty.nextSetBit(-1);
         if (idx == -1) {
             idx = count++;
@@ -217,46 +239,57 @@ public class BlockedSetIndex implements Index {
                 }
             }
         }
-        return idx;
+        while (values.size() < idx+1)
+        {
+            values.add( null );
+        }
+        I result = func.apply( filter );
+        values.set(idx, result);
+        return result;
     }
 
     @Override
-    public void remove(int index) {
-        for (int blockIdx=0;blockIdx<list.length;blockIdx++)
+    public void remove(I idx) {
+        int index = values.indexOf( idx );
+        if (index > -1)
         {
-            BitSet[] block = list[blockIdx];
-            if (block != null)
+            for (int blockIdx=0;blockIdx<list.length;blockIdx++)
             {
-                boolean isEmpty = true;
-                for (int bitIdx=0;bitIdx<BLOCK_SIZE;bitIdx++)
+                BitSet[] block = list[blockIdx];
+                if (block != null)
                 {
-                    BitSet bitSet = block[bitIdx];
-                    if (bitSet != null)
+                    boolean isEmpty = true;
+                    for (int bitIdx=0;bitIdx<BLOCK_SIZE;bitIdx++)
                     {
-                        bitSet.clear( index );
-                        if (bitSet.empty())
+                        BitSet bitSet = block[bitIdx];
+                        if (bitSet != null)
                         {
-                            block[bitIdx] = null;
-                        } else
-                        {
-                            isEmpty = false;
+                            bitSet.clear( index );
+                            if (bitSet.empty())
+                            {
+                                block[bitIdx] = null;
+                            } else
+                            {
+                                isEmpty = false;
+                            }
                         }
                     }
-                }
-                if (isEmpty)
-                {
-                    list[blockIdx] = null;
+                    if (isEmpty)
+                    {
+                        list[blockIdx] = null;
+                    }
                 }
             }
+            if (empty.size() <= index) {
+                empty.resize(index + 1);
+            }
+            empty.set(index);
+            values.set(index, null);
         }
-        if (empty.size() <= index) {
-            empty.resize(index + 1);
-        }
-        empty.set(index);
     }
 
     @Override
-    public Set<Integer> search(Hasher hasher) {
+    public Set<I> search(Hasher hasher) {
         EWAHBloomFilter filter = new EWAHBloomFilter( hasher, shape );
         long[] bits = filter.getBits();
         BitSet answer = null;
@@ -270,7 +303,7 @@ public class BlockedSetIndex implements Index {
                 int bitScan = (int)((bits[longIdx] >> byteIdx*Byte.SIZE) & MASK);
                 if (bitScan != 0)
                 {
-                   BitSet union = null;
+                    BitSet union = null;
 
                     for (int bitIdx : byteTable[bitScan])
                     {
@@ -302,8 +335,8 @@ public class BlockedSetIndex implements Index {
                 }
             }
         }
-        Set<Integer> result = new HashSet<Integer>();
-        answer.iterator().forEachRemaining( result::add );
+        Set<I> result = new HashSet<I>();
+        answer.iterator().forEachRemaining( i -> result.add( values.get(i)) );
         return result;
     }
 

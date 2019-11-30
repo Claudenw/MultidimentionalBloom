@@ -19,8 +19,13 @@ package org.xenei.bloom.multidimensional;
 
 import static org.junit.Assert.assertEquals;
 
+import java.nio.ByteBuffer;
+import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+import java.util.function.Function;
+
 import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.apache.commons.collections4.bloomfilter.Hasher.Factory;
 import org.apache.commons.collections4.bloomfilter.hasher.Murmur128;
@@ -29,14 +34,15 @@ import org.xenei.bloom.multidimensional.Container.Index;
 import org.xenei.bloom.multidimensional.Container.Storage;
 import org.xenei.bloom.multidimensional.index.FlatBloofi;
 import org.xenei.bloom.multidimensional.storage.InMemory;
+import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 
 public class ContainerImplTest {
-
+    Func func = new Func();
     Shape shape = new Shape(Murmur128.NAME, 3, 1.0 / 3000000);
-    Storage<String> storage = new InMemory<String>();
-    Index index = new FlatBloofi(shape);
-    Container<String> container = new ContainerImpl<String>(shape, storage, index);
+    Storage<String,UUID> storage = new InMemory<String,UUID>();
+    Index<UUID> index = new FlatBloofi<UUID>(func,shape);
+    Container<String> container = new ContainerImpl<String,UUID>(shape, storage, index);
 
     @Test
     public void roundTrip() {
@@ -125,4 +131,33 @@ public class ContainerImplTest {
 
     }
 
+    /**
+     * A standard Func to use in testing where UUID creation is desired.
+     *
+     */
+    public static class Func implements Function<BloomFilter,UUID> {
+
+        private byte[] getBytes( BloomFilter filter)
+        {
+            byte[] buffer = new byte[filter.getShape().getNumberOfBytes()];
+            long[] lBuffer = filter.getBits();
+            for (int i=0;i<buffer.length;i++)
+            {
+                int longIdx = i / Long.BYTES;
+                int longOfs = i % Long.BYTES;
+                if (longIdx >= lBuffer.length)
+                {
+                    return buffer;
+                }
+                buffer[i] = (byte) ((lBuffer[longIdx]>>(Byte.SIZE * longOfs))  & 0xFFL);
+            }
+            return buffer;
+        }
+
+        @Override
+        public UUID apply(BloomFilter filter) {
+            return UUID.nameUUIDFromBytes(getBytes( filter ));
+        }
+
+    }
 }

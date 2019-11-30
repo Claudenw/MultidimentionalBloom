@@ -19,6 +19,7 @@ package org.xenei.bloom.multidimensional;
 
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.Optional;
 
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.Hasher;
@@ -31,12 +32,13 @@ import org.apache.commons.collections4.bloomfilter.CountingBloomFilter;
  * An iplementation of a Multidimensional Bloom filter.
  *
  * @param <E> The type of object to be stored.
+ * @param <I> The type of object used for the index.
  */
-public class ContainerImpl<E> implements Container<E> {
+public class ContainerImpl<E,I> implements Container<E> {
     /**
      * The storage for the objects.
      */
-    private Storage<E> storage;
+    private Storage<E,I> storage;
     /**
      * The shape of the Blom filters in the container.
      */
@@ -44,7 +46,7 @@ public class ContainerImpl<E> implements Container<E> {
     /**
      * The index of the Bloom filters.
      */
-    private Index index;
+    private Index<I> index;
     /**
      * The number of values in the container.
      */
@@ -65,7 +67,7 @@ public class ContainerImpl<E> implements Container<E> {
      * @param storage the storage for the objects
      * @param index the index for the bloom filter.
      */
-    public ContainerImpl(Shape shape, Storage<E> storage, Index index) {
+    public ContainerImpl(Shape shape, Storage<E,I> storage, Index<I> index) {
         this( Double.valueOf( 1/shape.getProbability()).intValue(), shape, storage, index);
     }
 
@@ -82,7 +84,7 @@ public class ContainerImpl<E> implements Container<E> {
      * @param storage the storage for the objects
      * @param index the index for the bloom filter.
      */
-    public ContainerImpl(int estimatedPopulation, Shape shape, Storage<E> storage, Index index) {
+    public ContainerImpl(int estimatedPopulation, Shape shape, Storage<E,I> storage, Index<I> index) {
         this.shape = shape;
         this.storage = storage;
         this.index = index;
@@ -112,11 +114,10 @@ public class ContainerImpl<E> implements Container<E> {
         verifyHasher(hasher);
 
         if (gate.contains(hasher)) {
-            int idx = index.get(hasher);
-            if (idx == -1) {
-                return Collections.emptyIterator();
+            Optional<I> idx = index.get(hasher);
+            if (idx.isPresent()) {
+                return storage.get(idx.get()).iterator();
             }
-            return storage.get(idx).iterator();
         }
         return Collections.emptyIterator();
     }
@@ -126,12 +127,12 @@ public class ContainerImpl<E> implements Container<E> {
         verifyHasher(hasher);
         boolean possibleDuplicate = gate.contains( hasher );
         gate.merge(hasher);
-        int idx = possibleDuplicate? index.get(hasher) : -1;
-        if (idx == -1) {
-            idx = index.put(hasher);
+        Optional<I> idx = possibleDuplicate? index.get(hasher) : Optional.empty();
+        if (!idx.isPresent()) {
+            idx = Optional.of(index.put(hasher));
             filterCount++;
         }
-        storage.put(idx, value);
+        storage.put(idx.get(), value);
         valueCount++;
     }
 
@@ -140,16 +141,16 @@ public class ContainerImpl<E> implements Container<E> {
         verifyHasher(hasher);
 
         if (gate.contains(hasher)) {
-            int idx = index.get(hasher);
-            if (idx != -1) {
+            Optional<I> idx = index.get(hasher);
+            if (idx.isPresent()) {
 
-                boolean[] result = storage.remove(idx, value);
+                boolean[] result = storage.remove(idx.get(), value);
                 if (result[Storage.REMOVED]) {
                     BloomFilter gateFilter = new EWAHBloomFilter(hasher, gate.getShape());
                     valueCount--;
                     gate.remove(gateFilter);
                     if (result[Storage.EMPTY]) {
-                        index.remove(idx);
+                        index.remove(idx.get());
                         filterCount--;
                     }
                 }
@@ -170,7 +171,7 @@ public class ContainerImpl<E> implements Container<E> {
      */
     private Iterator<E> doSearch(Hasher hasher) {
         if (gate.contains(hasher)) {
-            Iterator<Integer> iter = index.search(hasher).iterator();
+            Iterator<I> iter = index.search(hasher).iterator();
             return new LazyIteratorChain<E>() {
                      @Override
                     protected Iterator<E> nextIterator(int count) {

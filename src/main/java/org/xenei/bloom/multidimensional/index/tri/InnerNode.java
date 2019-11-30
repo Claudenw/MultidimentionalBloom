@@ -24,16 +24,16 @@ import org.apache.commons.collections4.bloomfilter.BloomFilter;
  * An inner Trie node.
  *
  */
-public class InnerNode implements Node {
+public class InnerNode<I> implements Node<I> {
     /**
      * The Trie this node belongs to.
      */
-    private final Trie trie;
+    private final Trie<I> trie;
     /**
      * The array of child nodes from this node.
      * The number of children is determined by the chunk size.
      */
-    private final Node[] nodes;
+    private final Node<I>[] nodes;
     /**
      * The level (aka: depth) at which this nodes sits in the trie.
      * zero based counting.
@@ -43,7 +43,7 @@ public class InnerNode implements Node {
     /**
      * The parent node.
      */
-    private final InnerNode parent;
+    private final InnerNode<I> parent;
 
     /**
      * Constrcuts an innter node.
@@ -51,7 +51,8 @@ public class InnerNode implements Node {
      * @param trie the Trie in which this node sits.
      * @param parent the parent Node of this one.
      */
-    public InnerNode(int level, Trie trie, InnerNode parent) {
+    @SuppressWarnings("unchecked")
+    public InnerNode(int level, Trie<I> trie, InnerNode<I> parent) {
         this.trie = trie;
         this.level = level;
         this.parent = parent;
@@ -72,18 +73,18 @@ public class InnerNode implements Node {
      * The array may contain null values.
      * @return the array of nodes below this one.
      */
-    public Node[] getChildNodes() {
+    public Node<I>[] getChildNodes() {
         return nodes;
     }
 
     @Override
-    public LeafNode add(IndexedBloomFilter filter) {
-        int chunk = trie.getChunk(filter.getFilter(), level);
+    public LeafNode<I> add(BloomFilter filter) {
+        int chunk = trie.getChunk(filter, level);
         if (nodes[chunk] == null) {
             if ((level + 1) == trie.getMaxDepth()) {
-                nodes[chunk] = new LeafNode(filter.getIdx(), this);
+                nodes[chunk] = new LeafNode<I>(trie.makeIdx(filter), this);
             } else {
-                nodes[chunk] = new InnerNode(level + 1, trie, this);
+                nodes[chunk] = new InnerNode<I>(level + 1, trie, this);
             }
         }
         return nodes[chunk].add(filter);
@@ -113,18 +114,18 @@ public class InnerNode implements Node {
      * @param indexes The set of Bloom filter indexes.
      * @param filter the filter we are looking for.
      */
-    public void search(Set<Integer> indexes, BloomFilter filter) {
+    public void search(Set<I> indexes, BloomFilter filter) {
         int[] nodeIdxs = trie.getNodeIndexes(trie.getChunk(filter, level));
         if (isBaseNode()) {
             for (int i : nodeIdxs) {
                 if (nodes[i] != null) {
-                    indexes.add(((LeafNode) nodes[i]).getIdx());
+                    indexes.add(((LeafNode<I>) nodes[i]).getIdx());
                 }
             }
         } else {
             for (int i : nodeIdxs) {
                 if (nodes[i] != null) {
-                    ((InnerNode) nodes[i]).search(indexes, filter);
+                    ((InnerNode<I>) nodes[i]).search(indexes, filter);
                 }
             }
         }
@@ -141,7 +142,7 @@ public class InnerNode implements Node {
      * from its parent as well.
      * @param childNode the node to remove from the array of children.
      */
-    public void remove(Node childNode) {
+    public void remove(Node<I> childNode) {
         boolean isEmpty = true;
         for (int i = 0; i < nodes.length; i++) {
             if (nodes[i] == childNode) {
@@ -158,7 +159,7 @@ public class InnerNode implements Node {
     }
 
     @Override
-    public InnerNode getParent() {
+    public InnerNode<I> getParent() {
         return parent;
     }
 
@@ -168,7 +169,7 @@ public class InnerNode implements Node {
      * @return the index of the child node in the list.
      * @throws IllegalArgumentException if the child is not in the array of children.
      */
-    public int find(Node childNode) {
+    public int find(Node<I> childNode) {
         for (int i = 0; i < nodes.length; i++) {
             if (childNode.equals(nodes[i])) {
                 return i;

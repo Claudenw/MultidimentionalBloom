@@ -17,15 +17,22 @@
  */
 package org.xenei.bloom.multidimensional.index;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.PrimitiveIterator;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.IntConsumer;
+
+import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 import org.apache.commons.collections4.bloomfilter.Hasher;
+import org.xenei.bloom.filter.EWAHBloomFilter;
 import org.xenei.bloom.multidimensional.Container.Index;
 
 import com.googlecode.javaewah.datastructure.BitSet;
@@ -37,9 +44,9 @@ import com.googlecode.javaewah.datastructure.BitSet;
  * Originally from
  * https://github.com/lemire/bloofi/blob/master/src/mvm/provenance/FlatBloomFilterIndex.java
  *
- * @param <E>
+ * @param <I> the index type.
  */
-public final class RangePacked implements Index {
+public final class RangePacked<I> implements Index<I> {
 
     /**
      * The shape of the bloom filters.
@@ -58,14 +65,27 @@ public final class RangePacked implements Index {
     private BitSet busy;
 
     /**
+     * Function to convert BloomFilter to index.
+     */
+    private final Function<BloomFilter,I> func;
+
+    /**
+     * A list of index values matching the bitset values.
+     */
+    private final List<I> values;
+
+
+    /**
      * Constructs a flat bloofi.
      *
      * @param shape the Shape of the contained Bloom filters.
      */
-    public RangePacked(Shape shape) {
+    public RangePacked(Function<BloomFilter,I> func, Shape shape) {
+        this.func = func;
         this.shape = shape;
         this.buffer =new  BitSet[shape.getNumberOfBits()];
         this.busy = new BitSet(0);
+        this.values = new ArrayList<I>();
     }
 
     /**
@@ -101,7 +121,7 @@ public final class RangePacked implements Index {
     }
 
     @Override
-    public int get(Hasher hasher) {
+    public Optional<I> get(Hasher hasher) {
         Set<Integer> wanted = new HashSet<Integer>();
         hasher.getBits(shape).forEachRemaining( (Consumer<Integer>) wanted::add );
         BitSet answer = new BitSet(busy.size());
@@ -112,7 +132,7 @@ public final class RangePacked implements Index {
             {
                 if (buffer[buffIdx] == null)
                 {
-                    return NOT_FOUND;
+                    return Optional.empty();
                 } else {
                     answer.and(buffer[buffIdx]);
                 }
@@ -126,11 +146,16 @@ public final class RangePacked implements Index {
         if (answer.cardinality() > 1) {
             throw new IllegalStateException();
         }
-        return answer.nextSetBit(0);
+        int result = answer.nextSetBit(0);
+        if (result == -1)
+        {
+            return Optional.empty();
+        }
+        return Optional.of( values.get(result));
     }
 
     @Override
-    public int put(Hasher hasher) {
+    public I put(Hasher hasher) {
         int idx = busy.nextUnsetBit(0);
         if (idx < 0) {
             // extend the busy
@@ -138,16 +163,27 @@ public final class RangePacked implements Index {
             busy.resize(idx + Long.SIZE);
         }
         setBloomAt(idx, hasher);
-        return idx;
+        while (values.size() < idx+1)
+        {
+            values.add( null );
+        }
+        I result = func.apply( new EWAHBloomFilter(hasher,shape) );
+        values.set(idx, result);
+        return result;
     }
 
     @Override
-    public void remove(int index) {
-        clearBloomAt(index);
+    public void remove(I index) {
+        int idx = values.indexOf(index);
+        if (idx > -1)
+        {
+            clearBloomAt(idx);
+            values.set(idx, null);
+        }
     }
 
     @Override
-    public Set<Integer> search(Hasher hasher) {
+    public Set<I> search(Hasher hasher) {
         BitSet answer = new BitSet(busy.size());
         answer.or(busy);
         PrimitiveIterator.OfInt iter = hasher.getBits(shape);
@@ -160,8 +196,8 @@ public final class RangePacked implements Index {
             }
             answer.and( buffer[buffIdx]);
         }
-        Set<Integer> result = new HashSet<Integer>();
-        answer.iterator().forEachRemaining( result::add );
+        Set<I> result = new HashSet<I>();
+        answer.iterator().forEachRemaining( i -> result.add( values.get(i) ));
         return result;
     }
 

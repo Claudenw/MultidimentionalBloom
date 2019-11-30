@@ -22,7 +22,7 @@ import org.apache.commons.collections4.bloomfilter.BloomFilter;
 /**
  * The shared definition of a Node in the Trie.*
  */
-public interface Node {
+public interface Node<I> {
 
     /**
      * Adds an IndexedBloomFilter to this node.
@@ -32,7 +32,7 @@ public interface Node {
      * @param filter the filter to add
      * @return the LeafNode where the filter was added.
      */
-    public LeafNode add(IndexedBloomFilter filter);
+    public LeafNode<I> add(BloomFilter filter);
 
     /**
      * Removes a Bloom filter from the index.
@@ -45,6 +45,6 @@ public interface Node {
      * Gets the parent node of this node.
      * @return the parent node or {@code null} if this is the root node.
      */
-    public InnerNode getParent();
+    public InnerNode<I> getParent();
 
 }

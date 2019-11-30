@@ -17,15 +17,25 @@
  */
 package org.xenei.bloom.multidimensional.index;
 
+import java.util.function.Function;
+
+import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 import org.xenei.bloom.multidimensional.index.tri.Trie;
 
 /**
  * A Trie index that uses 4 bit nibbles as chunks.
- *
+ * <ul>
+ * <li>m = number of bits in the bloom filter</li>
+ * <li>N = number of unique filters stored in the trie.</li>
+ * <li>Insert costs: O( m/4 )</li>
+ * <li>Search costs: O( 1.5^4 * m/4 ) = O( 5.0625 * m/4 )
+ * <li>Memory requirements: O(2^4 * m/4 * N) = O(4Nm)</li>
+ * </ul>
  * @see Trie
+ * @param <I> The index type
  */
-public class Trie4 extends Trie {
+public class Trie4<I> extends Trie<I> {
 
     /**
      * The chunk size.
@@ -49,18 +59,20 @@ public class Trie4 extends Trie {
     /**
      * Constructs a Trie4.
      * Uses 1/shape.getProbability() as the estimated number of filters.
+     * @param func the function to convert Bloom filter to index object.
      * @param shape the shape of the contained Bloom filters.
      */
-    public Trie4(Shape shape) {
-        super(Double.valueOf( 1.0/shape.getProbability() ).intValue(), shape, CHUNK_SIZE, MASK);
+    public Trie4(Function<BloomFilter,I> func, Shape shape) {
+        super(func, Double.valueOf( 1.0/shape.getProbability() ).intValue(), shape, CHUNK_SIZE, MASK);
     }
     /**
      * Constructs a Trie4.
+     * @param func the function to convert Bloom filter to index object.
      * @param estimatedPopulation the estimated number of Bloom filters to index.
      * @param shape the shape of the contained Bloom filters.
      */
-    public Trie4(int estimatedPopulation, Shape shape) {
-        super(estimatedPopulation, shape, CHUNK_SIZE, MASK);
+    public Trie4(Function<BloomFilter,I> func, int estimatedPopulation, Shape shape) {
+        super(func, estimatedPopulation, shape, CHUNK_SIZE, MASK);
     }
 
     @Override

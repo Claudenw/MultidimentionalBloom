@@ -26,32 +26,28 @@ import java.util.List;
 import java.util.Map.Entry;
 import org.xenei.bloom.multidimensional.Container.Storage;
 
-public class InMemory<E> implements Storage<E> {
+public class InMemory<E,I> implements Storage<E,I> {
 
-    private HashMap<Integer, List<E>> storage = new HashMap<Integer, List<E>>();
+    private HashMap<I, List<E>> storage = new HashMap<I, List<E>>();
 
     @Override
-    public Collection<E> get(int idx) {
-        if (idx < 0) {
-            return Collections.emptyList();
-        }
+    public Collection<E> get(I idx) {
         Collection<E> result = storage.get(idx);
         return result == null ? Collections.emptyList() : result;
     }
 
     @Override
-    public void put(int idx, E value) {
+    public void put(I idx, E value) {
         List<E> lst = storage.get(idx);
         if (lst == null) {
             lst = new ArrayList<E>();
             storage.put(idx, lst);
         }
         lst.add(value);
-
     }
 
     @Override
-    public boolean[] remove(int idx, E value) {
+    public boolean[] remove(I idx, E value) {
         boolean[] result = new boolean[2];
         result[REMOVED] = false;
         result[EMPTY] = false;
@@ -71,7 +67,7 @@ public class InMemory<E> implements Storage<E> {
     }
 
     @Override
-    public Iterator<Entry<Integer, List<E>>> list() {
+    public Iterator<Entry<I, List<E>>> list() {
         return storage.entrySet().iterator();
     }
 

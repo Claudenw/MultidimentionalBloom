@@ -18,9 +18,13 @@
 package org.xenei.bloom.multidimensional.index;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
+
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 import org.junit.After;
 import org.junit.Before;
@@ -36,11 +40,11 @@ import org.xenei.junit.contract.Contract.Inject;
 public class IndexTest {
     private final static String HASH_NAME = "Test-IC";
     public final static Shape SHAPE = new Shape(HASH_NAME, 3, 1.0 / 10000);
-    IProducer<Index> producer;
-    Index index;
+    IProducer<Index<UUID>> producer;
+    Index<UUID> index;
 
     @Inject
-    public void setProducer(IProducer<Index> producer) {
+    public void setProducer(IProducer<Index<UUID>> producer) {
         this.producer = producer;
     }
 
@@ -57,14 +61,16 @@ public class IndexTest {
     @ContractTest
     public void getTest() {
         CachingHasher hasher1 = new CachingHasher(HASH_NAME, new long[][] { { 29, 0 }, { 13, 0 } });
-        int idx = index.put(hasher1);
-        assertEquals(idx, index.get(hasher1));
+        UUID idx = index.put(hasher1);
+        Optional<UUID> opt = index.get(hasher1);
+        assertTrue( opt.isPresent() );
+        assertEquals(idx, opt.get() );
     }
 
     @ContractTest
     public void getTest_NotFound() {
         CachingHasher hasher1 = new CachingHasher(HASH_NAME, new long[][] { { 29, 0 }, { 13, 0 } });
-        assertEquals(Index.NOT_FOUND, index.get(hasher1));
+        assertFalse(index.get(hasher1).isPresent());
     }
 
     @ContractTest
@@ -72,16 +78,18 @@ public class IndexTest {
         CachingHasher hasher1 = new CachingHasher(HASH_NAME, new long[][] { { 29, 0 }, { 13, 0 } });
         CachingHasher hasher2 = new CachingHasher(HASH_NAME, new long[][] { { 29, 0 } });
         index.put(hasher1);
-        assertEquals(Index.NOT_FOUND, index.get(hasher2));
+        assertFalse(index.get(hasher2).isPresent());
     }
 
     @ContractTest
     public void removeTest() {
         CachingHasher hasher1 = new CachingHasher(HASH_NAME, new long[][] { { 29, 0 }, { 13, 0 } });
-        int idx = index.put(hasher1);
-        assertEquals(idx, index.get(hasher1));
+        UUID idx = index.put(hasher1);
+        Optional<UUID> opt = index.get(hasher1);
+        assertTrue( opt.isPresent() );
+        assertEquals(idx, opt.get());
         index.remove(idx);
-        assertEquals(Index.NOT_FOUND, index.get(hasher1));
+        assertFalse(index.get(hasher1).isPresent());
     }
 
     @ContractTest
@@ -90,28 +98,28 @@ public class IndexTest {
         CachingHasher hasher2 = new CachingHasher(HASH_NAME, new long[][] { { 29, 0 }, { 14, 0 } });
         CachingHasher hasher3 = new CachingHasher(HASH_NAME, new long[][] { { 30, 0 }, { 13, 0 } });
         CachingHasher hasher4 = new CachingHasher(HASH_NAME, new long[][] { { 29, 0 }, { 30, 0 } });
-        int idx1 = index.put(hasher1);
-        int idx2 = index.put(hasher2);
-        int idx3 = index.put(hasher3);
-        int idx4 = index.put(hasher4);
+        UUID idx1 = index.put(hasher1);
+        UUID idx2 = index.put(hasher2);
+        UUID idx3 = index.put(hasher3);
+        UUID idx4 = index.put(hasher4);
 
         CachingHasher search = new CachingHasher(HASH_NAME, new long[][] { { 29, 0 }, { 13, 0 } });
-        Set<Integer> result = index.search(search);
+        Set<UUID> result = index.search(search);
         assertEquals(1, result.size());
-        assertEquals(idx1, result.iterator().next().intValue());
+        assertEquals(idx1, result.iterator().next());
 
         search = new CachingHasher(HASH_NAME, new long[][] { { 29, 0 } });
         result = index.search(search);
         assertEquals(3, result.size());
-        assertTrue(result.contains(Integer.valueOf(idx1)));
-        assertTrue(result.contains(Integer.valueOf(idx2)));
-        assertTrue(result.contains(Integer.valueOf(idx4)));
+        assertTrue(result.contains(idx1));
+        assertTrue(result.contains(idx2));
+        assertTrue(result.contains(idx4));
 
         search = new CachingHasher(HASH_NAME, new long[][] { { 13, 0 } });
         result = index.search(search);
         assertEquals(2, result.size());
-        assertTrue(result.contains(Integer.valueOf(idx1)));
-        assertTrue(result.contains(Integer.valueOf(idx3)));
+        assertTrue(result.contains(idx1));
+        assertTrue(result.contains(idx3));
 
         search = new CachingHasher(HASH_NAME, new long[][] { { 29, 0 }, { 13, 0 }, { 14, 0 } });
         result = index.search(search);

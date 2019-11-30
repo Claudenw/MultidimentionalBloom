@@ -17,8 +17,11 @@
  */
 package org.xenei.bloom.multidimensional.index;
 
+import java.util.UUID;
+
 import org.junit.runner.RunWith;
 import org.xenei.junit.contract.Contract.Inject;
+import org.xenei.bloom.multidimensional.ContainerImplTest;
 import org.xenei.junit.contract.ContractImpl;
 import org.xenei.junit.contract.ContractSuite;
 import org.xenei.junit.contract.IProducer;
@@ -28,12 +31,12 @@ import org.xenei.junit.contract.IProducer;
 public class BlockedSetIndexTest {
 
     @Inject
-    public IProducer<BlockedSetIndex> getProducer() {
-        return new IProducer<BlockedSetIndex>() {
+    public IProducer<BlockedSetIndex<UUID>> getProducer() {
+        return new IProducer<BlockedSetIndex<UUID>>() {
 
             @Override
-            public BlockedSetIndex newInstance() {
-                return new BlockedSetIndex(IndexTest.SHAPE);
+            public BlockedSetIndex<UUID> newInstance() {
+                return new BlockedSetIndex<UUID>(new ContainerImplTest.Func(),IndexTest.SHAPE);
             }
 
             @Override

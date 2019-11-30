@@ -24,6 +24,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.commons.collections4.Transformer;
 import org.apache.commons.collections4.iterators.TransformIterator;
@@ -33,21 +34,19 @@ import org.apache.ignite.client.ClientCache;
 import org.apache.ignite.client.IgniteClient;
 import org.xenei.bloom.multidimensional.Container.Storage;
 
-public class IgniteStorage<E> implements Storage<E> {
+public class IgniteStorage<E> implements Storage<E,UUID> {
 
     private static final String CACHE_NAME = "IgniteStorage";
-    private IgniteClient igniteClient;
     private Serde<E> serde;
-    private ClientCache<Integer, List<byte[]>> cache;
+    private ClientCache<UUID, List<byte[]>> cache;
 
     public IgniteStorage(IgniteClient igniteClient, Serde<E> serde) {
-        this.igniteClient = igniteClient;
         this.serde = serde;
         this.cache = igniteClient.getOrCreateCache(CACHE_NAME);
     }
 
     @Override
-    public Collection<E> get(int idx) {
+    public Collection<E> get(UUID idx) {
         List<byte[]> cachedVal = cache.get(idx);
         if (cachedVal == null) {
             return Collections.emptyList();
@@ -56,7 +55,7 @@ public class IgniteStorage<E> implements Storage<E> {
     }
 
     @Override
-    public void put(int idx, E value) {
+    public void put(UUID idx, E value) {
         List<byte[]> cachedVal = cache.get(idx);
         if (cachedVal == null)
         {
@@ -67,7 +66,7 @@ public class IgniteStorage<E> implements Storage<E> {
     }
 
     @Override
-    public boolean[] remove(int idx, E value) {
+    public boolean[] remove(UUID idx, E value) {
         boolean[] result = new boolean[2];
         result[REMOVED] = false;
         result[EMPTY] = false;
@@ -87,31 +86,35 @@ public class IgniteStorage<E> implements Storage<E> {
     }
 
     @Override
-    public Iterator<Map.Entry<Integer, List<E>>> list() {
-        ScanQuery<Integer, List<byte[]>> scan = new ScanQuery<Integer, List<byte[]>>();
-        QueryCursor<javax.cache.Cache.Entry<Integer, List<byte[]>>> cursor = cache.query(scan);
-        return new TransformIterator<javax.cache.Cache.Entry<Integer, List<byte[]>>,
-                Map.Entry<Integer, List<E>>>( cursor.iterator(), new Transformer<javax.cache.Cache.Entry<Integer, List<byte[]>>,
-                        Map.Entry<Integer, List<E>>>(){
+    public Iterator<Map.Entry<UUID, List<E>>> list() {
+        ScanQuery<UUID, List<byte[]>> scan = new ScanQuery<UUID, List<byte[]>>();
+        QueryCursor<javax.cache.Cache.Entry<UUID, List<byte[]>>> cursor = cache.query(scan);
+        return new TransformIterator<javax.cache.Cache.Entry<UUID, List<byte[]>>,Map.Entry<UUID, List<E>>>( cursor.iterator(), new Transformer
+                        <javax.cache.Cache.Entry<UUID, List<byte[]>>,
+                        Map.Entry<UUID, List<E>>>(){
 
                     @Override
-                    public Entry<Integer, List<E>> transform(
-                            javax.cache.Cache.Entry<Integer, List<byte[]>> input) {
+                    public Entry<UUID, List<E>> transform(
+                            javax.cache.Cache.Entry<UUID, List<byte[]>> input) {
                         return new Converter(input);
                     }});
-
     }
 
-    class Converter implements Map.Entry<Integer, List<E>> {
 
-        private javax.cache.Cache.Entry<Integer, List<byte[]>> ce;
+    /**
+     * Converts a javax.cache.Cache.Entry<UUID, List<byte[]>> to a Map.Entry<UUID, List<E>>.
+     *
+     */
+    class Converter implements Map.Entry<UUID, List<E>> {
 
-        Converter( javax.cache.Cache.Entry<Integer, List<byte[]>> ce ) {
+        private javax.cache.Cache.Entry<UUID, List<byte[]>> ce;
+
+        Converter( javax.cache.Cache.Entry<UUID, List<byte[]>> ce ) {
             this.ce = ce;
         }
 
         @Override
-        public Integer getKey() {
+        public UUID getKey() {
             return ce.getKey();
         }
 
