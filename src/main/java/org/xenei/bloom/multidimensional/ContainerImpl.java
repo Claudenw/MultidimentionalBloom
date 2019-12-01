@@ -51,10 +51,7 @@ public class ContainerImpl<E,I> implements Container<E> {
      * The number of values in the container.
      */
     private int valueCount;
-    /**
-     * The number of filters in the container.
-     */
-    private int filterCount;
+
     /**
      * The Bloom filter that gates the container.
      */
@@ -89,7 +86,6 @@ public class ContainerImpl<E,I> implements Container<E> {
         this.storage = storage;
         this.index = index;
         this.valueCount = 0;
-        this.filterCount = 0;
         Shape gateShape = new Shape(shape.getHashFunctionName(), estimatedPopulation, shape.getProbability());
         gate = new CountingBloomFilter(gateShape);
     }
@@ -101,7 +97,7 @@ public class ContainerImpl<E,I> implements Container<E> {
 
     @Override
     public int getFilterCount() {
-        return filterCount;
+        return index.getFilterCount();
     }
 
     @Override
@@ -125,14 +121,10 @@ public class ContainerImpl<E,I> implements Container<E> {
     @Override
     public void put(Hasher hasher, E value) {
         verifyHasher(hasher);
-        boolean possibleDuplicate = gate.contains( hasher );
         gate.merge(hasher);
-        Optional<I> idx = possibleDuplicate? index.get(hasher) : Optional.empty();
-        if (!idx.isPresent()) {
-            idx = Optional.of(index.put(hasher));
-            filterCount++;
-        }
-        storage.put(idx.get(), value);
+        I idx = index.create( hasher );
+        index.put( idx, hasher );
+        storage.put( idx, value);
         valueCount++;
     }
 
@@ -151,7 +143,6 @@ public class ContainerImpl<E,I> implements Container<E> {
                     gate.remove(gateFilter);
                     if (result[Storage.EMPTY]) {
                         index.remove(idx.get());
-                        filterCount--;
                     }
                 }
             }
@@ -173,11 +164,11 @@ public class ContainerImpl<E,I> implements Container<E> {
         if (gate.contains(hasher)) {
             Iterator<I> iter = index.search(hasher).iterator();
             return new LazyIteratorChain<E>() {
-                     @Override
-                    protected Iterator<E> nextIterator(int count) {
-                         return iter.hasNext() ? storage.get(iter.next()).iterator() : null;
-                    }
-                 };
+                @Override
+                protected Iterator<E> nextIterator(int count) {
+                    return iter.hasNext() ? storage.get(iter.next()).iterator() : null;
+                }
+            };
         }
         return Collections.emptyListIterator();
 

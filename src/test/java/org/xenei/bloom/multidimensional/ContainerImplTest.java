@@ -19,8 +19,6 @@ package org.xenei.bloom.multidimensional;
 
 import static org.junit.Assert.assertEquals;
 
-import java.nio.ByteBuffer;
-import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;

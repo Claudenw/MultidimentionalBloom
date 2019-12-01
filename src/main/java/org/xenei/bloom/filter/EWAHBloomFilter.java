@@ -43,7 +43,7 @@ public class EWAHBloomFilter extends BloomFilter {
 
     /**
      * Constructs a filter from a hasher and shape.
-     * 
+     *
      * @param hasher the hasher to use
      * @param shape  the shape.
      */

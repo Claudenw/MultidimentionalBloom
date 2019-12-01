@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.collections4.bloomfilter.BitSetBloomFilter;
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.Hasher;
+import org.apache.commons.collections4.bloomfilter.HasherBloomFilter;
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 import org.xenei.bloom.multidimensional.Container.Index;
 
@@ -113,11 +114,10 @@ public abstract class Trie<I> implements Index<I> {
     }
 
     @Override
-    public final I put(Hasher hasher) {
+    public final void put(I idx, Hasher hasher) {
         BloomFilter filter = new BitSetBloomFilter(hasher, shape);
-        LeafNode<I> leafNode = root.add( filter );
+        LeafNode<I> leafNode = root.add( idx, filter );
         data.put(leafNode.getIdx(), leafNode);
-        return leafNode.getIdx();
     }
 
     @Override
@@ -221,8 +221,14 @@ public abstract class Trie<I> implements Index<I> {
         return (int) Math.ceil(shape.getNumberOfBits() * 1.0 / getChunkSize());
     }
 
-    public I makeIdx(BloomFilter filter)
-    {
-        return func.apply(filter);
+    @Override
+    public int getFilterCount() {
+        return data.size();
     }
+
+    @Override
+    public I create(Hasher hasher) {
+        return func.apply(new HasherBloomFilter( hasher, shape ));
+    }
+
 }

@@ -90,14 +90,14 @@ public class IgniteStorage<E> implements Storage<E,UUID> {
         ScanQuery<UUID, List<byte[]>> scan = new ScanQuery<UUID, List<byte[]>>();
         QueryCursor<javax.cache.Cache.Entry<UUID, List<byte[]>>> cursor = cache.query(scan);
         return new TransformIterator<javax.cache.Cache.Entry<UUID, List<byte[]>>,Map.Entry<UUID, List<E>>>( cursor.iterator(), new Transformer
-                        <javax.cache.Cache.Entry<UUID, List<byte[]>>,
-                        Map.Entry<UUID, List<E>>>(){
+                <javax.cache.Cache.Entry<UUID, List<byte[]>>,
+                Map.Entry<UUID, List<E>>>(){
 
-                    @Override
-                    public Entry<UUID, List<E>> transform(
-                            javax.cache.Cache.Entry<UUID, List<byte[]>> input) {
-                        return new Converter(input);
-                    }});
+            @Override
+            public Entry<UUID, List<E>> transform(
+                    javax.cache.Cache.Entry<UUID, List<byte[]>> input) {
+                return new Converter(input);
+            }});
     }
 
 

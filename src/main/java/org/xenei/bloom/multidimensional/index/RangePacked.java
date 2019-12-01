@@ -20,19 +20,20 @@ package org.xenei.bloom.multidimensional.index;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.PrimitiveIterator;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntConsumer;
 
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 import org.apache.commons.collections4.bloomfilter.Hasher;
-import org.xenei.bloom.filter.EWAHBloomFilter;
+import org.apache.commons.collections4.bloomfilter.HasherBloomFilter;
 import org.xenei.bloom.multidimensional.Container.Index;
 
 import com.googlecode.javaewah.datastructure.BitSet;
@@ -54,8 +55,9 @@ public final class RangePacked<I> implements Index<I> {
     private final Shape shape;
 
     /**
-     * A list of buffers. Each entry in the buffer is 64 filters. Each long in the
-     * long[] is a bit in the bloom filter.
+     * A list of buffers, one for each bit in the filter. Each entry in the buffer is
+     * a bitset comprising the integer indexes for each filter that has that particular
+     * bit enabled.
      */
     private BitSet[] buffer;
 
@@ -74,6 +76,11 @@ public final class RangePacked<I> implements Index<I> {
      */
     private final List<I> values;
 
+    /**
+     * A map of values to internal indexes
+     */
+    private final Map<I,Integer> valueToIdx;
+
 
     /**
      * Constructs a flat bloofi.
@@ -86,6 +93,7 @@ public final class RangePacked<I> implements Index<I> {
         this.buffer =new  BitSet[shape.getNumberOfBits()];
         this.busy = new BitSet(0);
         this.values = new ArrayList<I>();
+        this.valueToIdx = new HashMap<I,Integer>();
     }
 
     /**
@@ -122,55 +130,37 @@ public final class RangePacked<I> implements Index<I> {
 
     @Override
     public Optional<I> get(Hasher hasher) {
-        Set<Integer> wanted = new HashSet<Integer>();
-        hasher.getBits(shape).forEachRemaining( (Consumer<Integer>) wanted::add );
-        BitSet answer = new BitSet(busy.size());
-        answer.or(busy);
-        for (int buffIdx=0;buffIdx<buffer.length;buffIdx++)
-        {
-            if (wanted.contains( buffIdx))
-            {
-                if (buffer[buffIdx] == null)
-                {
-                    return Optional.empty();
-                } else {
-                    answer.and(buffer[buffIdx]);
-                }
-            } else {
-                if (buffer[buffIdx] != null)
-                {
-                    answer.andNot(buffer[buffIdx]);
-                }
-            }
-        }
-        if (answer.cardinality() > 1) {
-            throw new IllegalStateException();
-        }
-        int result = answer.nextSetBit(0);
-        if (result == -1)
-        {
-            return Optional.empty();
-        }
-        return Optional.of( values.get(result));
+        I result = create(hasher);
+        return values.indexOf(result) == -1 ? Optional.empty() : Optional.of(result);
     }
 
     @Override
-    public I put(Hasher hasher) {
-        int idx = busy.nextUnsetBit(0);
-        if (idx < 0) {
-            // extend the busy
-            idx = busy.size();
-            busy.resize(idx + Long.SIZE);
+    public void put(I idx, Hasher hasher) {
+        Integer i = valueToIdx.get(idx);
+        if (i == null)
+        {
+            int index = busy.nextUnsetBit(0);
+            if (index < 0) {
+                // extend the busy
+                index = busy.size();
+                busy.resize(index + Long.SIZE);
+            }
+            setBloomAt(index, hasher);
+            register( idx, index );
         }
-        setBloomAt(idx, hasher);
-        while (values.size() < idx+1)
+
+    }
+
+    private void register(I value, int idx )
+    {
+        while (values.size() < busy.size())
         {
             values.add( null );
         }
-        I result = func.apply( new EWAHBloomFilter(hasher,shape) );
-        values.set(idx, result);
-        return result;
+        values.set(idx, value);
+        valueToIdx.put(value, idx);
     }
+
 
     @Override
     public void remove(I index) {
@@ -178,8 +168,9 @@ public final class RangePacked<I> implements Index<I> {
         if (idx > -1)
         {
             clearBloomAt(idx);
-            values.set(idx, null);
+            values.set(idx,  null);
         }
+        valueToIdx.remove( index );
     }
 
     @Override
@@ -199,6 +190,16 @@ public final class RangePacked<I> implements Index<I> {
         Set<I> result = new HashSet<I>();
         answer.iterator().forEachRemaining( i -> result.add( values.get(i) ));
         return result;
+    }
+
+    @Override
+    public int getFilterCount() {
+        return busy.cardinality();
+    }
+
+    @Override
+    public I create(Hasher hasher) {
+        return func.apply(new HasherBloomFilter( hasher, shape ));
     }
 
 }

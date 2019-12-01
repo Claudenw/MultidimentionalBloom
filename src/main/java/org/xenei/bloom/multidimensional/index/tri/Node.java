@@ -29,10 +29,11 @@ public interface Node<I> {
      * By definition this method will determine which chunk the filter belongs in on inner nodes
      * and then add it to the inner node at that chunk.  The inner node above the leaf node will return
      * the leaf node to the calling method and the stack will unwind.
+     * @parma idx the index to use in the leaf.
      * @param filter the filter to add
      * @return the LeafNode where the filter was added.
      */
-    public LeafNode<I> add(BloomFilter filter);
+    public LeafNode<I> add(I idx, BloomFilter filter);
 
     /**
      * Removes a Bloom filter from the index.

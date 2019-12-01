@@ -58,7 +58,7 @@ public class LeafNode<I> implements Node<I> {
     }
 
     @Override
-    public LeafNode<I> add(BloomFilter filter) {
+    public LeafNode<I> add(I idx, BloomFilter filter) {
         return this;
     }
 

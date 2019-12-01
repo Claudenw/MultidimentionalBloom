@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 import org.apache.commons.collections4.bloomfilter.Hasher;
+import org.apache.commons.collections4.bloomfilter.HasherBloomFilter;
 import org.xenei.bloom.filter.EWAHBloomFilter;
 import org.xenei.bloom.multidimensional.Container.Index;
 
@@ -120,11 +121,8 @@ public class Linear<I> implements Index<I> {
     }
 
     @Override
-    public I put(Hasher hasher) {
-        BloomFilter filter = new EWAHBloomFilter(hasher, shape);
-        I result = func.apply( filter );
-        data.put(result, filter);
-        return result;
+    public void put(I idx, Hasher hasher) {
+        data.put( create(hasher), new EWAHBloomFilter(hasher, shape));
     }
 
     @Override
@@ -138,6 +136,17 @@ public class Linear<I> implements Index<I> {
         return data.entrySet().stream()
                 .filter( entry -> {return entry.getValue().contains(bf);})
                 .map( Map.Entry::getKey ).collect( Collectors.toSet() );
+    }
+
+
+    @Override
+    public int getFilterCount() {
+        return data.size();
+    }
+
+    @Override
+    public I create(Hasher hasher) {
+        return func.apply(new HasherBloomFilter( hasher, shape ));
     }
 
 }

@@ -78,16 +78,16 @@ public class InnerNode<I> implements Node<I> {
     }
 
     @Override
-    public LeafNode<I> add(BloomFilter filter) {
+    public LeafNode<I> add(I idx, BloomFilter filter) {
         int chunk = trie.getChunk(filter, level);
         if (nodes[chunk] == null) {
             if ((level + 1) == trie.getMaxDepth()) {
-                nodes[chunk] = new LeafNode<I>(trie.makeIdx(filter), this);
+                nodes[chunk] = new LeafNode<I>(idx, this);
             } else {
                 nodes[chunk] = new InnerNode<I>(level + 1, trie, this);
             }
         }
-        return nodes[chunk].add(filter);
+        return nodes[chunk].add(idx, filter);
     }
 
     @Override

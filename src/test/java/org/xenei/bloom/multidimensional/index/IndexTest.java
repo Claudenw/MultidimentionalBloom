@@ -61,7 +61,8 @@ public class IndexTest {
     @ContractTest
     public void getTest() {
         CachingHasher hasher1 = new CachingHasher(HASH_NAME, new long[][] { { 29, 0 }, { 13, 0 } });
-        UUID idx = index.put(hasher1);
+        UUID idx = index.create(hasher1);
+        index.put(idx, hasher1);
         Optional<UUID> opt = index.get(hasher1);
         assertTrue( opt.isPresent() );
         assertEquals(idx, opt.get() );
@@ -77,14 +78,15 @@ public class IndexTest {
     public void getTest_PartialMatch() {
         CachingHasher hasher1 = new CachingHasher(HASH_NAME, new long[][] { { 29, 0 }, { 13, 0 } });
         CachingHasher hasher2 = new CachingHasher(HASH_NAME, new long[][] { { 29, 0 } });
-        index.put(hasher1);
+        index.put(index.create( hasher1 ), hasher1);
         assertFalse(index.get(hasher2).isPresent());
     }
 
     @ContractTest
     public void removeTest() {
         CachingHasher hasher1 = new CachingHasher(HASH_NAME, new long[][] { { 29, 0 }, { 13, 0 } });
-        UUID idx = index.put(hasher1);
+        UUID idx = index.create(hasher1);
+        index.put( idx, hasher1);
         Optional<UUID> opt = index.get(hasher1);
         assertTrue( opt.isPresent() );
         assertEquals(idx, opt.get());
@@ -98,10 +100,15 @@ public class IndexTest {
         CachingHasher hasher2 = new CachingHasher(HASH_NAME, new long[][] { { 29, 0 }, { 14, 0 } });
         CachingHasher hasher3 = new CachingHasher(HASH_NAME, new long[][] { { 30, 0 }, { 13, 0 } });
         CachingHasher hasher4 = new CachingHasher(HASH_NAME, new long[][] { { 29, 0 }, { 30, 0 } });
-        UUID idx1 = index.put(hasher1);
-        UUID idx2 = index.put(hasher2);
-        UUID idx3 = index.put(hasher3);
-        UUID idx4 = index.put(hasher4);
+
+        UUID idx1 = index.create(hasher1);
+        index.put( idx1, hasher1 );
+        UUID idx2 = index.create(hasher2);
+        index.put( idx2, hasher2 );
+        UUID idx3 = index.create(hasher3);
+        index.put( idx3, hasher3 );
+        UUID idx4 = index.create(hasher4);
+        index.put( idx4, hasher4 );
 
         CachingHasher search = new CachingHasher(HASH_NAME, new long[][] { { 29, 0 }, { 13, 0 } });
         Set<UUID> result = index.search(search);

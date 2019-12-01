@@ -119,13 +119,13 @@ public interface Container<E> {
         Optional<I> get(Hasher hasher);
 
         /**
-         * Put the bloom filter into the index. If the index already contains the filter
-         * the operation is undefined.
+         * Put the bloom filter into the index.
          *
+         * @param idx the Index value to record the hasher at.
          * @param hasher the hasher to add
          * @return the index of the storage collection.
          */
-        I put(Hasher hasher);
+        void put( I idx, Hasher hasher);
 
         /**
          * Remove the filter at the storage index from the index.
@@ -141,6 +141,19 @@ public interface Container<E> {
          * @return the set of storage indexes.
          */
         Set<I> search(Hasher hasher);
+
+        /**
+         * Gets the number of filters indexed in the system.
+         * @return The number of filters indexed in the system.
+         */
+        int getFilterCount();
+
+        /**
+         * Create the index value from the hasher
+         * @param hasher the hasher to process
+         * @return the index value.
+         */
+        I create(Hasher hasher);
     }
 
     /**
@@ -148,6 +161,7 @@ public interface Container<E> {
      * one object may be stored with a single Bloom filter.
      *
      * @param <E> the type of object.
+     * @param <I> the type of the index object.
      */
     public interface Storage<E, I> {
         /**
