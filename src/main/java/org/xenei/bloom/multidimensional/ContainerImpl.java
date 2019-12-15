@@ -26,6 +26,7 @@ import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.apache.commons.collections4.iterators.LazyIteratorChain;
 import org.xenei.bloom.filter.EWAHBloomFilter;
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
+import org.apache.commons.collections4.bloomfilter.hasher.HashFunctionIdentity;
 import org.apache.commons.collections4.bloomfilter.CountingBloomFilter;
 
 /**
@@ -86,7 +87,7 @@ public class ContainerImpl<E,I> implements Container<E> {
         this.storage = storage;
         this.index = index;
         this.valueCount = 0;
-        Shape gateShape = new Shape(shape.getHashFunctionName(), estimatedPopulation, shape.getProbability());
+        Shape gateShape = new Shape(shape.getHashFunctionIdentity(), estimatedPopulation, shape.getProbability());
         gate = new CountingBloomFilter(gateShape);
     }
 
@@ -202,9 +203,12 @@ public class ContainerImpl<E,I> implements Container<E> {
      * @param hasher the Hasher to check
      */
     protected final void verifyHasher(Hasher hasher) {
-        if (!shape.getHashFunctionName().equals(hasher.getName())) {
+
+        if (HashFunctionIdentity.COMMON_COMPARATOR.compare(shape.getHashFunctionIdentity(),
+                hasher.getHashFunctionIdentity()) != 0) {
             throw new IllegalArgumentException(
-                    String.format("Hasher (%s) is not the hasher for shape (%s)", hasher.getName(), shape.toString()));
+                    String.format("Hasher (%s) is not the hasher for shape (%s)",
+                            HashFunctionIdentity.asCommonString(hasher.getHashFunctionIdentity()), shape.toString()));
         }
     }
 

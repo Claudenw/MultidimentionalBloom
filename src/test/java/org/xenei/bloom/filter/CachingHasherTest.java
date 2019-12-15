@@ -26,18 +26,20 @@ import java.util.Iterator;
 
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 import org.apache.commons.collections4.bloomfilter.hasher.DynamicHasher;
-import org.apache.commons.collections4.bloomfilter.hasher.MD5;
-import org.apache.commons.collections4.bloomfilter.hasher.ObjectsHash;
+import org.apache.commons.collections4.bloomfilter.hasher.HashFunction;
+import org.apache.commons.collections4.bloomfilter.hasher.function.MD5Cyclic;
+import org.apache.commons.collections4.bloomfilter.hasher.function.ObjectsHashIterative;
 import org.junit.Test;
 
 public class CachingHasherTest {
 
     @Test
     public void testSameValue() {
-        CachingHasher hasher1 = new CachingHasher.Factory().useFunction(MD5.NAME).with("Hello World").build();
-        DynamicHasher hasher2 = new DynamicHasher.Factory().useFunction(MD5.NAME).with("Hello World").build();
+        HashFunction hashFunction = new MD5Cyclic();
+        CachingHasher hasher1 = new CachingHasher.Builder( hashFunction ).with("Hello World").build();
+        DynamicHasher hasher2 = new DynamicHasher.Builder( hashFunction ).with("Hello World").build();
 
-        Shape shape = new Shape(MD5.NAME, 3, 1.0 / 10000);
+        Shape shape = new Shape(hashFunction, 3, 1.0 / 10000);
         Iterator<Integer> iter1 = hasher1.getBits(shape);
         Iterator<Integer> iter2 = hasher2.getBits(shape);
 
@@ -51,8 +53,9 @@ public class CachingHasherTest {
 
     @Test
     public void testInvalidName() {
+
         try {
-            new CachingHasher.Builder(ObjectsHash.NAME, new ObjectsHash());
+            new CachingHasher.Builder(new ObjectsHashIterative());
             fail( "Should have thrown IllegalArgumentException");
         }
         catch (IllegalArgumentException e)
@@ -60,7 +63,7 @@ public class CachingHasherTest {
             // exected do nothing.
         }
         try {
-            new CachingHasher(ObjectsHash.NAME, new long[][] {{1L, 2L}});
+            new CachingHasher(new ObjectsHashIterative(), new long[][] {{1L, 2L}});
             fail( "Should have thrown IllegalArgumentException");
         }
         catch (IllegalArgumentException e)

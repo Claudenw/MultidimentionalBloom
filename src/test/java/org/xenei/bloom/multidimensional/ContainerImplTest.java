@@ -25,8 +25,9 @@ import java.util.UUID;
 import java.util.function.Function;
 
 import org.apache.commons.collections4.bloomfilter.Hasher;
-import org.apache.commons.collections4.bloomfilter.Hasher.Factory;
-import org.apache.commons.collections4.bloomfilter.hasher.Murmur128;
+import org.apache.commons.collections4.bloomfilter.hasher.DynamicHasher;
+import org.apache.commons.collections4.bloomfilter.hasher.HashFunction;
+import org.apache.commons.collections4.bloomfilter.hasher.function.Murmur128x86Cyclic;
 import org.junit.Test;
 import org.xenei.bloom.multidimensional.Container.Index;
 import org.xenei.bloom.multidimensional.Container.Storage;
@@ -36,8 +37,9 @@ import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 
 public class ContainerImplTest {
+    HashFunction hashFunction = new Murmur128x86Cyclic();
     Func func = new Func();
-    Shape shape = new Shape(Murmur128.NAME, 3, 1.0 / 3000000);
+    Shape shape = new Shape(hashFunction, 3, 1.0 / 3000000);
     Storage<String,UUID> storage = new InMemory<String,UUID>();
     Index<UUID> index = new FlatBloofi<UUID>(func,shape);
     Container<String> container = new ContainerImpl<String,UUID>(shape, storage, index);
@@ -45,7 +47,7 @@ public class ContainerImplTest {
     @Test
     public void roundTrip() {
         String test = "Hello World";
-        Hasher hasher = Factory.DEFAULT.useFunction(Murmur128.NAME).with(test).build();
+        Hasher hasher = new DynamicHasher.Builder(hashFunction).with(test).build();
         container.put(hasher, test);
         List<String> lst = new ArrayList<String>();
         container.get(hasher).forEachRemaining(lst::add);
@@ -54,7 +56,7 @@ public class ContainerImplTest {
     }
 
     private Hasher add(String s) {
-        Hasher hasher = Factory.DEFAULT.useFunction(Murmur128.NAME).with(s).build();
+        Hasher hasher = new DynamicHasher.Builder(hashFunction).with(s).build();
         container.put(hasher, s);
         return hasher;
     }
@@ -74,7 +76,7 @@ public class ContainerImplTest {
 
     private Hasher makeHasher(String s) {
         String[] parts = s.split(" ");
-        Hasher.Builder builder = Factory.DEFAULT.useFunction(Murmur128.NAME);
+        Hasher.Builder builder = new DynamicHasher.Builder(hashFunction);
         for (String part : parts) {
             builder.with(part);
         }

@@ -33,17 +33,19 @@ import java.util.function.ToLongBiFunction;
 
 import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 import org.apache.commons.collections4.bloomfilter.Hasher;
-import org.apache.commons.collections4.bloomfilter.hasher.MD5;
-import org.apache.commons.collections4.bloomfilter.hasher.Murmur128;
+import org.apache.commons.collections4.bloomfilter.hasher.HashFunction;
+import org.apache.commons.collections4.bloomfilter.hasher.HashFunctionIdentity;
+import org.apache.commons.collections4.bloomfilter.hasher.HashFunctionIdentity.ProcessType;
+import org.apache.commons.collections4.bloomfilter.hasher.function.MD5Cyclic;
+import org.apache.commons.collections4.bloomfilter.hasher.function.Murmur128x86Cyclic;
 
 /**
  * The class that performs hashing on demand. Items can be added to the hasher
  * using the {@code with()} methods. once {@code getBits()} method is called it
- * is an error to call {@code with()} again.
- * <p>
- * This hasher can only produce cyclic hash values. Any hash method may be passed to the constructor
- * however, the name must specify a Cyclic hash (i.e. the last character of the name must be 'C').
- * </p>
+ * is an error to call {@code with()} again. <p> This hasher can only produce
+ * cyclic hash values. Any hash method may be passed to the constructor however,
+ * the name must specify a Cyclic hash (i.e. the last character of the name must
+ * be 'C'). </p>
  */
 public class CachingHasher implements Hasher {
 
@@ -53,52 +55,53 @@ public class CachingHasher implements Hasher {
     private final List<long[]> buffers;
 
     /**
-     * The name of the hash function.
+     * The hash function identity
      */
-    private final String name;
+    private final HashFunctionIdentity functionIdentity;
 
     /**
      * Constructs a DynamicHasher.
      *
-     * @param name     the name for the function.
-     * @param function the function to use.
-     * @param buffers  the byte buffers that will be hashed.
-     * @throws IllegalArgumentException if the name does not indicate a cyclic hashing function.
+     * @param functionIdentity The identity of the function.
+     * @param function         the function to use.
+     * @param buffers          the byte buffers that will be hashed.
+     * @throws IllegalArgumentException if the name does not indicate a cyclic
+     *                                  hashing function.
      */
-    public CachingHasher(String name, List<long[]> buffers) {
-        checkName(name);
+    public CachingHasher(HashFunctionIdentity functionIdentity, List<long[]> buffers) {
+        this.functionIdentity = checkIdentity(functionIdentity);
         this.buffers = new ArrayList<long[]>(buffers);
-        this.name = name;
     }
 
     /**
      * Constructs a DynamicHasher.
      *
-     * @param name     the name for the function.
-     * @param function the function to use.
-     * @param buffers  the byte buffers that will be hashed.
-     * @throws IllegalArgumentException if the name does not indicate a cyclic hashing function.
+     * @param functionIdentity The identity of the function.
+     * @param function         the function to use.
+     * @param buffers          the byte buffers that will be hashed.
+     * @throws IllegalArgumentException if the name does not indicate a cyclic
+     *                                  hashing function.
      */
-    public CachingHasher(String name, long[][] buffers) {
-        checkName( name );
+    public CachingHasher(HashFunctionIdentity functionIdentity, long[][] buffers) {
+        this.functionIdentity = checkIdentity(functionIdentity);
         this.buffers = Arrays.asList(buffers);
-        this.name = name;
     }
 
     /**
      * Check that the name is valid for this hasher.
-     * @param name the name to check.
+     *
+     * @param functionIdentity the Function Identity to check.
      */
-    private static void checkName(String name) {
-        if (!name.endsWith("C"))
-        {
-            throw new IllegalArgumentException( "Only cyclic hash functions may be used in a caching hasher");
+    private static HashFunctionIdentity checkIdentity(HashFunctionIdentity functionIdentity) {
+        if (functionIdentity.getProcessType() != ProcessType.CYCLIC) {
+            throw new IllegalArgumentException("Only cyclic hash functions may be used in a caching hasher");
         }
+        return functionIdentity;
     }
 
     @Override
-    public String getName() {
-        return name;
+    public HashFunctionIdentity getHashFunctionIdentity() {
+        return functionIdentity;
     }
 
     /**
@@ -113,9 +116,11 @@ public class CachingHasher implements Hasher {
      */
     @Override
     public PrimitiveIterator.OfInt getBits(Shape shape) {
-        if (!getName().equals(shape.getHashFunctionName())) {
-            throw new IllegalArgumentException(
-                    String.format("Shape hasher %s is not %s", shape.getHashFunctionName(), getName()));
+        if (HashFunctionIdentity.COMMON_COMPARATOR.compare(getHashFunctionIdentity(),
+                shape.getHashFunctionIdentity()) != 0) {
+            throw new IllegalArgumentException(String.format("Shape hasher %s is not %s",
+                    HashFunctionIdentity.asCommonString(shape.getHashFunctionIdentity()),
+                    HashFunctionIdentity.asCommonString(getHashFunctionIdentity())));
         }
         return new Iter(shape);
     }
@@ -165,85 +170,6 @@ public class CachingHasher implements Hasher {
     }
 
     /**
-     * A factory that produces DynamicHasher Builders.
-     *
-     * @since 4.5
-     */
-    public static class Factory implements Hasher.Factory {
-
-        /**
-         * A map of functions names to functions.
-         */
-        private final Map<String, Constructor<? extends ToLongBiFunction<byte[], Integer>>> funcMap;
-
-        /**
-         * Constructs a factory with well known hash functions.
-         */
-        public Factory() {
-            funcMap = new HashMap<String, Constructor<? extends ToLongBiFunction<byte[], Integer>>>();
-            try {
-                register(MD5.NAME, MD5.class);
-            } catch (NoSuchMethodException | SecurityException e) {
-                throw new IllegalStateException("Can not get MD5 constructor");
-            }
-            try {
-                register(Murmur128.NAME, Murmur128.class);
-            } catch (NoSuchMethodException | SecurityException e) {
-                throw new IllegalStateException("Can not get Murmur128 constructor");
-            }
-        }
-
-        /**
-         * Registers a Hash function implementation. After registration the name can be
-         * used to retrieve the Hasher. <p> The function calculates the long value that
-         * is used to turn on a bit in the Bloom filter. The first argument is a
-         * {@code byte[]} containing the bytes to be indexed, the second argument is a
-         * seed index. </p><p> On the first call to {@code applyAsLong} the seed index
-         * will be 0 and the function should start the hash sequence. </p> <p> On
-         * subsequent calls the hash function using the same buffer the seed index will
-         * be incremented. The function should return a different calculated value on
-         * each call. The function may use the seed as part of the calculation or simply
-         * use it to detect when the buffer has changed. </p>
-         *
-         * @see #useFunction(String)
-         * @param name          The name of the hash function
-         * @param functionClass The function class for the hasher to use. Must have a
-         *                      zero argument constructor.
-         * @throws SecurityException     if the no argument constructor can not be
-         *                               accessed.
-         * @throws NoSuchMethodException if functionClass does not have a no argument
-         *                               constructor.
-         */
-        protected void register(String name, Class<? extends ToLongBiFunction<byte[], Integer>> functionClass)
-                throws NoSuchMethodException, SecurityException {
-            if ( ! name.endsWith( "C" ) )
-            {
-                throw new IllegalArgumentException( "Only cyclic functions may be used in a caching hasher");
-            }
-            Constructor<? extends ToLongBiFunction<byte[], Integer>> c = functionClass.getConstructor();
-            funcMap.put(name, c);
-        }
-
-        @Override
-        public Set<String> listFunctionNames() {
-            return Collections.unmodifiableSet(funcMap.keySet());
-        }
-
-        @Override
-        public CachingHasher.Builder useFunction(String name) {
-            Constructor<? extends ToLongBiFunction<byte[], Integer>> c = funcMap.get(name);
-            if (c == null) {
-                throw new IllegalArgumentException("No function implementation named " + name);
-            }
-            try {
-                return new Builder(name, c.newInstance());
-            } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-                throw new IllegalStateException("Unable to call constructor for " + name, e);
-            }
-        }
-    }
-
-    /**
      * The builder for DyanamicHashers.
      *
      * @since 4.5
@@ -257,23 +183,18 @@ public class CachingHasher implements Hasher {
         /**
          * The function that the resulting DynamicHasher will use.
          */
-        private ToLongBiFunction<byte[], Integer> function;
-
-        /**
-         * The name for the function.
-         */
-        private String name;
+        private HashFunction function;
 
         /**
          * Constructs a DynamicHasher builder.
          *
          * @param name     the name of the function.
          * @param function the function implementation.
-         * @throws IllegalArgumentException if the name does not indicate a cyclic method.
+         * @throws IllegalArgumentException if the name does not indicate a cyclic
+         *                                  method.
          */
-        public Builder(String name, ToLongBiFunction<byte[], Integer> function) {
-            checkName( name );
-            this.name = name;
+        public Builder(HashFunction function) {
+            checkIdentity(function);
             this.function = function;
             this.buffers = new ArrayList<byte[]>();
 
@@ -289,11 +210,11 @@ public class CachingHasher implements Hasher {
             List<long[]> cache = new ArrayList<long[]>();
             for (byte[] buff : buffers) {
                 long[] result = new long[2];
-                result[0] = function.applyAsLong(buff, 0);
-                result[1] = function.applyAsLong(buff, 1) - result[0];
+                result[0] = function.apply(buff, 0);
+                result[1] = function.apply(buff, 1) - result[0];
                 cache.add(result);
             }
-            return new CachingHasher(name, cache);
+            return new CachingHasher(function, cache);
         }
 
         @Override

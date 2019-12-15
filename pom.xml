@@ -45,5 +45,10 @@
 			<version>0.2.0</version>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>commons-codec</groupId>
+			<artifactId>commons-codec</artifactId>
+			<version>1.14-SNAPSHOT</version>
+		</dependency>
 	</dependencies>
 </project>
