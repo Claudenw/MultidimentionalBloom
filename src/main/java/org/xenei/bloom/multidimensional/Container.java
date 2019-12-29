@@ -25,7 +25,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
+import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.Hasher;
 
 /**
@@ -54,7 +54,7 @@ public interface Container<E> {
      *
      * @return the shape of the filters in the container.
      */
-    Shape getShape();
+    BloomFilter.Shape getShape();
 
     /**
      * Gets an iterator of stored objects that have matching filters.

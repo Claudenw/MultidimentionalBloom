@@ -22,6 +22,7 @@ import java.util.BitSet;
 import java.util.PrimitiveIterator.OfInt;
 import java.util.function.IntConsumer;
 
+import org.apache.commons.collections4.bloomfilter.AbstractBloomFilter;
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.apache.commons.collections4.bloomfilter.hasher.StaticHasher;
@@ -34,7 +35,7 @@ import com.googlecode.javaewah.EWAHCompressedBitmap;
  * low number of functions (k value).
  *
  */
-public class EWAHBloomFilter extends BloomFilter {
+public class EWAHBloomFilter extends AbstractBloomFilter {
 
     /**
      * The bitset that defines this BloomFilter.
@@ -47,7 +48,7 @@ public class EWAHBloomFilter extends BloomFilter {
      * @param hasher the hasher to use
      * @param shape  the shape.
      */
-    public EWAHBloomFilter(Hasher hasher, Shape shape) {
+    public EWAHBloomFilter(Hasher hasher, BloomFilter.Shape shape) {
         this(shape);
         verifyHasher(hasher);
         hasher.getBits(shape).forEachRemaining((IntConsumer) bitSet::set);
@@ -58,7 +59,7 @@ public class EWAHBloomFilter extends BloomFilter {
      *
      * @param shape The BloomFilter.Shape to define this BloomFilter.
      */
-    public EWAHBloomFilter(Shape shape) {
+    public EWAHBloomFilter(BloomFilter.Shape shape) {
         super(shape);
         this.bitSet = new EWAHCompressedBitmap();
     }
@@ -100,7 +101,7 @@ public class EWAHBloomFilter extends BloomFilter {
     }
 
     @Override
-    public int hammingValue() {
+    public int cardinality() {
         return bitSet.cardinality();
     }
 
@@ -120,40 +121,31 @@ public class EWAHBloomFilter extends BloomFilter {
         bitSet = bitSet.or(other.bitSet);
     }
 
-    /**
-     * Calculate the andCardinality with another EWAHBloomFilter. <p> This method
-     * takes advantage of the internal structure of the EWAHBloomFilter. </p>
-     *
-     * @param other the other EWAHBloomFilter filter.
-     * @see #andCardinality(BloomFilter)
-     */
-    public int andCardinality(EWAHBloomFilter other) {
-        verifyShape(other);
-        return bitSet.andCardinality(other.bitSet);
+    @Override
+    public int andCardinality(BloomFilter other) {
+        if (other instanceof EWAHBloomFilter) {
+            verifyShape(other);
+            return bitSet.andCardinality(((EWAHBloomFilter) other).bitSet);
+        }
+        return super.andCardinality(other);
     }
 
-    /**
-     * Calculate the orCardinality with another EWAHBloomFilter. <p> This method
-     * takes advantage of the internal structure of the EWAHBloomFilter. </p>
-     *
-     * @param other the other EWAHBloomFilter filter.
-     * @see #orCardinality(BloomFilter)
-     */
-    public int orCardinality(EWAHBloomFilter other) {
-        verifyShape(other);
-        return bitSet.orCardinality(other.bitSet);
+    @Override
+    public int orCardinality(BloomFilter other) {
+        if (other instanceof EWAHBloomFilter) {
+            verifyShape(other);
+            return bitSet.orCardinality(((EWAHBloomFilter) other).bitSet);
+        }
+        return super.orCardinality(other);
     }
 
-    /**
-     * Calculate the xorCardinality with another EWAHBloomFilter. <p> This method
-     * takes advantage of the internal structure of the EWAHBloomFilter. </p>
-     *
-     * @param other the other EWAHBloomFilter filter.
-     * @see #xorCardinality(BloomFilter)
-     */
-    public int xorCardinality(EWAHBloomFilter other) {
-        verifyShape(other);
-        return bitSet.xorCardinality(other.bitSet);
+    @Override
+    public int xorCardinality(BloomFilter other) {
+        if (other instanceof EWAHBloomFilter) {
+            verifyShape(other);
+            return bitSet.xorCardinality(((EWAHBloomFilter) other).bitSet);
+        }
+        return super.xorCardinality(other);
     }
 
 }

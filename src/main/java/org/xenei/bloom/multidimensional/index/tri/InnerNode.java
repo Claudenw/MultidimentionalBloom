@@ -18,6 +18,7 @@
 package org.xenei.bloom.multidimensional.index.tri;
 
 import java.util.Set;
+
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
 
 /**

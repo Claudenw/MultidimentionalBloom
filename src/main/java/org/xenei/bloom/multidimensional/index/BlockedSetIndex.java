@@ -30,7 +30,6 @@ import java.util.function.Function;
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.apache.commons.collections4.bloomfilter.HasherBloomFilter;
-import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 import org.xenei.bloom.filter.EWAHBloomFilter;
 import org.xenei.bloom.multidimensional.Container.Index;
 import com.googlecode.javaewah.datastructure.BitSet;
@@ -92,7 +91,7 @@ public class BlockedSetIndex<I> implements Index<I> {
     /**
      * The shape of the contained Bloom filters.
      */
-    protected final Shape shape;
+    protected final BloomFilter.Shape shape;
     /**
      * An array of blocks.
      */
@@ -126,7 +125,7 @@ public class BlockedSetIndex<I> implements Index<I> {
      * @param func the function to convert Bloom filter to index object.
      * @param shape the shape of the contained Bloom filters.
      */
-    public BlockedSetIndex(Function<BloomFilter,I> func, Shape shape) {
+    public BlockedSetIndex(Function<BloomFilter,I> func, BloomFilter.Shape shape) {
         this.func = func;
         this.shape = shape;
         this.list = new BitSet[shape.getNumberOfBytes()][BLOCK_SIZE];

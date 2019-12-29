@@ -34,12 +34,11 @@ import org.xenei.bloom.multidimensional.Container.Storage;
 import org.xenei.bloom.multidimensional.index.FlatBloofi;
 import org.xenei.bloom.multidimensional.storage.InMemory;
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
-import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 
 public class ContainerImplTest {
     HashFunction hashFunction = new Murmur128x86Cyclic();
     Func func = new Func();
-    Shape shape = new Shape(hashFunction, 3, 1.0 / 3000000);
+    BloomFilter.Shape shape = new BloomFilter.Shape(hashFunction, 3, 1.0 / 3000000);
     Storage<String,UUID> storage = new InMemory<String,UUID>();
     Index<UUID> index = new FlatBloofi<UUID>(func,shape);
     Container<String> container = new ContainerImpl<String,UUID>(shape, storage, index);

@@ -20,7 +20,6 @@ package org.xenei.bloom.multidimensional.index;
 import java.util.function.Function;
 
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
-import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 import org.xenei.bloom.multidimensional.index.tri.Trie;
 
 /**
@@ -62,7 +61,7 @@ public class Trie4<I> extends Trie<I> {
      * @param func the function to convert Bloom filter to index object.
      * @param shape the shape of the contained Bloom filters.
      */
-    public Trie4(Function<BloomFilter,I> func, Shape shape) {
+    public Trie4(Function<BloomFilter,I> func, BloomFilter.Shape shape) {
         super(func, Double.valueOf( 1.0/shape.getProbability() ).intValue(), shape, CHUNK_SIZE, MASK);
     }
     /**
@@ -71,7 +70,7 @@ public class Trie4<I> extends Trie<I> {
      * @param estimatedPopulation the estimated number of Bloom filters to index.
      * @param shape the shape of the contained Bloom filters.
      */
-    public Trie4(Function<BloomFilter,I> func, int estimatedPopulation, Shape shape) {
+    public Trie4(Function<BloomFilter,I> func, int estimatedPopulation, BloomFilter.Shape shape) {
         super(func, estimatedPopulation, shape, CHUNK_SIZE, MASK);
     }
 

@@ -21,11 +21,10 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.Optional;
 
-import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.apache.commons.collections4.iterators.LazyIteratorChain;
 import org.xenei.bloom.filter.EWAHBloomFilter;
-import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
+import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.hasher.HashFunctionIdentity;
 import org.apache.commons.collections4.bloomfilter.CountingBloomFilter;
 
@@ -43,7 +42,7 @@ public class ContainerImpl<E,I> implements Container<E> {
     /**
      * The shape of the Blom filters in the container.
      */
-    private Shape shape;
+    private BloomFilter.Shape shape;
     /**
      * The index of the Bloom filters.
      */
@@ -65,7 +64,7 @@ public class ContainerImpl<E,I> implements Container<E> {
      * @param storage the storage for the objects
      * @param index the index for the bloom filter.
      */
-    public ContainerImpl(Shape shape, Storage<E,I> storage, Index<I> index) {
+    public ContainerImpl(BloomFilter.Shape shape, Storage<E,I> storage, Index<I> index) {
         this( Double.valueOf( 1/shape.getProbability()).intValue(), shape, storage, index);
     }
 
@@ -82,12 +81,12 @@ public class ContainerImpl<E,I> implements Container<E> {
      * @param storage the storage for the objects
      * @param index the index for the bloom filter.
      */
-    public ContainerImpl(int estimatedPopulation, Shape shape, Storage<E,I> storage, Index<I> index) {
+    public ContainerImpl(int estimatedPopulation, BloomFilter.Shape shape, Storage<E,I> storage, Index<I> index) {
         this.shape = shape;
         this.storage = storage;
         this.index = index;
         this.valueCount = 0;
-        Shape gateShape = new Shape(shape.getHashFunctionIdentity(), estimatedPopulation, shape.getProbability());
+        BloomFilter.Shape gateShape = new BloomFilter.Shape(shape.getHashFunctionIdentity(), estimatedPopulation, shape.getProbability());
         gate = new CountingBloomFilter(gateShape);
     }
 
@@ -102,7 +101,7 @@ public class ContainerImpl<E,I> implements Container<E> {
     }
 
     @Override
-    public Shape getShape() {
+    public BloomFilter.Shape getShape() {
         return shape;
     }
 
@@ -191,7 +190,7 @@ public class ContainerImpl<E,I> implements Container<E> {
      * @param shape the other shape to check.
      * @throws IllegalArgumentException if the shapes are not the same.
      */
-    protected final void verifyShape(Shape shape) {
+    protected final void verifyShape(BloomFilter.Shape shape) {
         if (!this.shape.equals(shape)) {
             throw new IllegalArgumentException(String.format("Shape %s is not the same as %s", shape, this.shape));
         }

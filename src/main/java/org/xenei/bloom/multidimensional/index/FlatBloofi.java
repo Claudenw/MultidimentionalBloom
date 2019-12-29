@@ -28,7 +28,6 @@ import java.util.function.Function;
 import java.util.function.IntConsumer;
 import java.util.stream.Collectors;
 
-import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.apache.commons.collections4.bloomfilter.HasherBloomFilter;
@@ -50,7 +49,7 @@ public final class FlatBloofi<I> implements Index<I> {
     /**
      * The shape of the bloom filters.
      */
-    private final Shape shape;
+    private final BloomFilter.Shape shape;
 
     /**
      * A list of buffers.
@@ -80,7 +79,7 @@ public final class FlatBloofi<I> implements Index<I> {
      * @param func the function to convert Bloom filter to index object.
      * @param shape the Shape of the contained Bloom filters.
      */
-    public FlatBloofi(Function<BloomFilter,I> func, Shape shape) {
+    public FlatBloofi(Function<BloomFilter,I> func, BloomFilter.Shape shape) {
         this.func = func;
         this.shape = shape;
         this.buffer = new ArrayList<long[]>();

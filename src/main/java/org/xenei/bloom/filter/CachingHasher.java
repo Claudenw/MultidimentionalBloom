@@ -17,27 +17,17 @@
  */
 package org.xenei.bloom.filter;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.PrimitiveIterator;
-import java.util.Set;
-import java.util.function.ToLongBiFunction;
-
-import org.apache.commons.collections4.bloomfilter.BloomFilter.Shape;
+import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.apache.commons.collections4.bloomfilter.hasher.HashFunction;
 import org.apache.commons.collections4.bloomfilter.hasher.HashFunctionIdentity;
 import org.apache.commons.collections4.bloomfilter.hasher.HashFunctionIdentity.ProcessType;
-import org.apache.commons.collections4.bloomfilter.hasher.function.MD5Cyclic;
-import org.apache.commons.collections4.bloomfilter.hasher.function.Murmur128x86Cyclic;
 
 /**
  * The class that performs hashing on demand. Items can be added to the hasher
@@ -115,23 +105,23 @@ public class CachingHasher implements Hasher {
      *                                  equal {@code getName()}
      */
     @Override
-    public PrimitiveIterator.OfInt getBits(Shape shape) {
+    public PrimitiveIterator.OfInt getBits(BloomFilter.Shape shape) {
         if (HashFunctionIdentity.COMMON_COMPARATOR.compare(getHashFunctionIdentity(),
                 shape.getHashFunctionIdentity()) != 0) {
             throw new IllegalArgumentException(String.format("Shape hasher %s is not %s",
                     HashFunctionIdentity.asCommonString(shape.getHashFunctionIdentity()),
                     HashFunctionIdentity.asCommonString(getHashFunctionIdentity())));
         }
-        return new Iter(shape);
+        return new Iterator(shape);
     }
 
     /**
      * The iterator of integers.
      */
-    private class Iter implements PrimitiveIterator.OfInt {
+    private class Iterator implements PrimitiveIterator.OfInt {
         private int buffer = 0;
         private int funcCount = 0;
-        private final Shape shape;
+        private final BloomFilter.Shape shape;
         private long accumulator;
 
         /**
@@ -139,7 +129,7 @@ public class CachingHasher implements Hasher {
          *
          * @param shape
          */
-        private Iter(Shape shape) {
+        private Iterator(BloomFilter.Shape shape) {
             this.shape = shape;
             this.accumulator = buffers.isEmpty() ? 0 : buffers.get(0)[0];
         }
