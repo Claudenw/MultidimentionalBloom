@@ -95,6 +95,12 @@ public class CachingHasher implements Hasher {
         return functionIdentity;
     }
 
+    @Override
+    public boolean isEmpty() {
+        return buffers.isEmpty();
+    }
+
+
     /**
      * Return an iterator of integers that are the bits to enable in the Bloom
      * filter based on the shape. The iterator may return the same value multiple
@@ -225,5 +231,6 @@ public class CachingHasher implements Hasher {
         }
 
     }
+
 
 }
