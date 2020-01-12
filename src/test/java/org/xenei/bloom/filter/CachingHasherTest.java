@@ -24,9 +24,9 @@ import static org.junit.Assert.fail;
 
 import java.util.Iterator;
 
-import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.hasher.DynamicHasher;
 import org.apache.commons.collections4.bloomfilter.hasher.HashFunction;
+import org.apache.commons.collections4.bloomfilter.hasher.Shape;
 import org.apache.commons.collections4.bloomfilter.hasher.function.MD5Cyclic;
 import org.apache.commons.collections4.bloomfilter.hasher.function.ObjectsHashIterative;
 import org.junit.Test;
@@ -39,7 +39,7 @@ public class CachingHasherTest {
         CachingHasher hasher1 = new CachingHasher.Builder( hashFunction ).with("Hello World").build();
         DynamicHasher hasher2 = new DynamicHasher.Builder( hashFunction ).with("Hello World").build();
 
-        BloomFilter.Shape shape = new BloomFilter.Shape(hashFunction, 3, 1.0 / 10000);
+        Shape shape = new Shape(hashFunction, 3, 1.0 / 10000);
         Iterator<Integer> iter1 = hasher1.getBits(shape);
         Iterator<Integer> iter2 = hasher2.getBits(shape);
 

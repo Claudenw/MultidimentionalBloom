@@ -26,8 +26,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
-import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.apache.commons.collections4.bloomfilter.HasherBloomFilter;
+import org.apache.commons.collections4.bloomfilter.hasher.Hasher;
+import org.apache.commons.collections4.bloomfilter.hasher.Shape;
 import org.xenei.bloom.filter.EWAHBloomFilter;
 import org.xenei.bloom.multidimensional.Container.Index;
 
@@ -43,7 +44,7 @@ public class Linear<I> implements Index<I> {
     /**
      * The shape of the bloom filters.
      */
-    private BloomFilter.Shape shape;
+    private Shape shape;
     /**
      * The list of bloom filters.
      */
@@ -95,7 +96,7 @@ public class Linear<I> implements Index<I> {
      * @param func The function to convert bloom filter to index object.
      * @param shape the shape of the bloom filters.
      */
-    public Linear(Function<BloomFilter,I> func, BloomFilter.Shape shape) {
+    public Linear(Function<BloomFilter,I> func, Shape shape) {
         this( func, Double.valueOf( 1.0/shape.getProbability() ).intValue(), shape );
     }
 
@@ -105,7 +106,7 @@ public class Linear<I> implements Index<I> {
      * @param estimatedPopulation the estimated number of Bloom filters to index.
      * @param shape the shape of the bloom filters.
      */
-    public Linear(Function<BloomFilter,I> func, int estimatedPopulation, BloomFilter.Shape shape) {
+    public Linear(Function<BloomFilter,I> func, int estimatedPopulation, Shape shape) {
         this.shape = shape;
         this.func = func;
         data = new HashMap<I,BloomFilter>(estimatedPopulation);

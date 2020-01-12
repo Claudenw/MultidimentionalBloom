@@ -23,10 +23,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.PrimitiveIterator;
-import org.apache.commons.collections4.bloomfilter.BloomFilter;
-import org.apache.commons.collections4.bloomfilter.Hasher;
+
 import org.apache.commons.collections4.bloomfilter.hasher.HashFunction;
 import org.apache.commons.collections4.bloomfilter.hasher.HashFunctionIdentity;
+import org.apache.commons.collections4.bloomfilter.hasher.Hasher;
+import org.apache.commons.collections4.bloomfilter.hasher.Shape;
 import org.apache.commons.collections4.bloomfilter.hasher.HashFunctionIdentity.ProcessType;
 
 /**
@@ -105,7 +106,7 @@ public class CachingHasher implements Hasher {
      *                                  equal {@code getName()}
      */
     @Override
-    public PrimitiveIterator.OfInt getBits(BloomFilter.Shape shape) {
+    public PrimitiveIterator.OfInt getBits(Shape shape) {
         if (HashFunctionIdentity.COMMON_COMPARATOR.compare(getHashFunctionIdentity(),
                 shape.getHashFunctionIdentity()) != 0) {
             throw new IllegalArgumentException(String.format("Shape hasher %s is not %s",
@@ -121,7 +122,7 @@ public class CachingHasher implements Hasher {
     private class Iterator implements PrimitiveIterator.OfInt {
         private int buffer = 0;
         private int funcCount = 0;
-        private final BloomFilter.Shape shape;
+        private final Shape shape;
         private long accumulator;
 
         /**
@@ -129,7 +130,7 @@ public class CachingHasher implements Hasher {
          *
          * @param shape
          */
-        private Iterator(BloomFilter.Shape shape) {
+        private Iterator(Shape shape) {
             this.shape = shape;
             this.accumulator = buffers.isEmpty() ? 0 : buffers.get(0)[0];
         }

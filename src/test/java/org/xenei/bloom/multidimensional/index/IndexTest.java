@@ -25,11 +25,11 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.hasher.HashFunctionIdentity;
 import org.apache.commons.collections4.bloomfilter.hasher.HashFunctionIdentity.ProcessType;
 import org.apache.commons.collections4.bloomfilter.hasher.HashFunctionIdentity.Signedness;
 import org.apache.commons.collections4.bloomfilter.hasher.HashFunctionIdentityImpl;
+import org.apache.commons.collections4.bloomfilter.hasher.Shape;
 import org.junit.After;
 import org.junit.Before;
 import org.xenei.bloom.filter.CachingHasher;
@@ -44,7 +44,7 @@ import org.xenei.junit.contract.Contract.Inject;
 public class IndexTest {
     private final static HashFunctionIdentity HASH_IDENTITY = new HashFunctionIdentityImpl( "Test Code",
             "Test-IC", Signedness.SIGNED, ProcessType.CYCLIC, 1L );
-    public final static BloomFilter.Shape SHAPE = new BloomFilter.Shape(HASH_IDENTITY, 3, 1.0 / 10000);
+    public final static Shape SHAPE = new Shape(HASH_IDENTITY, 3, 1.0 / 10000);
     IProducer<Index<UUID>> producer;
     Index<UUID> index;
 

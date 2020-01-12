@@ -31,8 +31,9 @@ import java.util.function.Function;
 import java.util.function.IntConsumer;
 
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
-import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.apache.commons.collections4.bloomfilter.HasherBloomFilter;
+import org.apache.commons.collections4.bloomfilter.hasher.Hasher;
+import org.apache.commons.collections4.bloomfilter.hasher.Shape;
 import org.xenei.bloom.multidimensional.Container.Index;
 
 import com.googlecode.javaewah.datastructure.BitSet;
@@ -51,7 +52,7 @@ public final class RangePacked<I> implements Index<I> {
     /**
      * The shape of the bloom filters.
      */
-    private final BloomFilter.Shape shape;
+    private final Shape shape;
 
     /**
      * A list of buffers, one for each bit in the filter. Each entry in the buffer is
@@ -86,7 +87,7 @@ public final class RangePacked<I> implements Index<I> {
      *
      * @param shape the Shape of the contained Bloom filters.
      */
-    public RangePacked(Function<BloomFilter,I> func, BloomFilter.Shape shape) {
+    public RangePacked(Function<BloomFilter,I> func, Shape shape) {
         this.func = func;
         this.shape = shape;
         this.buffer =new  BitSet[shape.getNumberOfBits()];

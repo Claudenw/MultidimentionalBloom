@@ -24,7 +24,8 @@ import java.util.function.IntConsumer;
 
 import org.apache.commons.collections4.bloomfilter.AbstractBloomFilter;
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
-import org.apache.commons.collections4.bloomfilter.Hasher;
+import org.apache.commons.collections4.bloomfilter.hasher.Hasher;
+import org.apache.commons.collections4.bloomfilter.hasher.Shape;
 import org.apache.commons.collections4.bloomfilter.hasher.StaticHasher;
 
 import com.googlecode.javaewah.EWAHCompressedBitmap;
@@ -48,7 +49,7 @@ public class EWAHBloomFilter extends AbstractBloomFilter {
      * @param hasher the hasher to use
      * @param shape  the shape.
      */
-    public EWAHBloomFilter(Hasher hasher, BloomFilter.Shape shape) {
+    public EWAHBloomFilter(Hasher hasher, Shape shape) {
         this(shape);
         verifyHasher(hasher);
         hasher.getBits(shape).forEachRemaining((IntConsumer) bitSet::set);
@@ -59,7 +60,7 @@ public class EWAHBloomFilter extends AbstractBloomFilter {
      *
      * @param shape The BloomFilter.Shape to define this BloomFilter.
      */
-    public EWAHBloomFilter(BloomFilter.Shape shape) {
+    public EWAHBloomFilter(Shape shape) {
         super(shape);
         this.bitSet = new EWAHCompressedBitmap();
     }

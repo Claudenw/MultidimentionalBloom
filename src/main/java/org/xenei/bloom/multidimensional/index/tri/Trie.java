@@ -31,8 +31,9 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.collections4.bloomfilter.BitSetBloomFilter;
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
-import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.apache.commons.collections4.bloomfilter.HasherBloomFilter;
+import org.apache.commons.collections4.bloomfilter.hasher.Hasher;
+import org.apache.commons.collections4.bloomfilter.hasher.Shape;
 import org.xenei.bloom.multidimensional.Container.Index;
 
 /**
@@ -56,7 +57,7 @@ public abstract class Trie<I> implements Index<I> {
     /**
      * The shape of the contained Bloom filters.
      */
-    protected final BloomFilter.Shape shape;
+    protected final Shape shape;
     /**
      * A list of all leaf nodes created in the system
      */
@@ -86,7 +87,7 @@ public abstract class Trie<I> implements Index<I> {
      * @param chunkSize the size of the Trie chunks in bits.
      * @param mask the mask to extract a single chunk.
      */
-    protected Trie(Function<BloomFilter,I> func,int estimatedPopulation, BloomFilter.Shape shape, int chunkSize, long mask) {
+    protected Trie(Function<BloomFilter,I> func,int estimatedPopulation, Shape shape, int chunkSize, long mask) {
         this.func = func;
         this.shape = shape;
         this.chunkSize = chunkSize;
@@ -212,7 +213,7 @@ public abstract class Trie<I> implements Index<I> {
      * Gets the shape of the Bloom filters in this Trie.
      * @return the shape of the contained Bloom filters.
      */
-    protected BloomFilter.Shape getShape() {
+    protected Shape getShape() {
         return shape;
     }
 

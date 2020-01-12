@@ -24,9 +24,10 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;
 
-import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.apache.commons.collections4.bloomfilter.hasher.DynamicHasher;
 import org.apache.commons.collections4.bloomfilter.hasher.HashFunction;
+import org.apache.commons.collections4.bloomfilter.hasher.Hasher;
+import org.apache.commons.collections4.bloomfilter.hasher.Shape;
 import org.apache.commons.collections4.bloomfilter.hasher.function.Murmur128x86Cyclic;
 import org.junit.Test;
 import org.xenei.bloom.multidimensional.Container.Index;
@@ -38,7 +39,7 @@ import org.apache.commons.collections4.bloomfilter.BloomFilter;
 public class ContainerImplTest {
     HashFunction hashFunction = new Murmur128x86Cyclic();
     Func func = new Func();
-    BloomFilter.Shape shape = new BloomFilter.Shape(hashFunction, 3, 1.0 / 3000000);
+    Shape shape = new Shape(hashFunction, 3, 1.0 / 3000000);
     Storage<String,UUID> storage = new InMemory<String,UUID>();
     Index<UUID> index = new FlatBloofi<UUID>(func,shape);
     Container<String> container = new ContainerImpl<String,UUID>(shape, storage, index);
