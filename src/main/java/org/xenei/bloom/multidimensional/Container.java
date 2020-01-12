@@ -111,7 +111,13 @@ public interface Container<E> {
     public interface Index<I> {
 
         /**
-         * Get the index that matches the filter.
+         * Gets the shape of the index
+         * @return the Shape of this index.
+         */
+        Shape getShape();
+
+        /**
+         * Gets the index that matches the filter.
          *
          * @param hasher the hasher to match
          * @return the index that matches the filter.
@@ -119,7 +125,7 @@ public interface Container<E> {
         Optional<I> get(Hasher hasher);
 
         /**
-         * Put the bloom filter into the index.
+         * Puts the bloom filter into the index.
          *
          * @param idx the Index value to record the hasher at.
          * @param hasher the hasher to add
@@ -128,19 +134,25 @@ public interface Container<E> {
         void put( I idx, Hasher hasher);
 
         /**
-         * Remove the filter at the storage index from the index.
+         * Removes the filter at the storage index from the index.
          *
          * @param index the index to remove.
          */
         void remove(I index);
 
         /**
-         * Search for matching filters.
+         * Searches for matching filters.
          *
          * @param hasher the hasher to search for.
          * @return the set of storage indexes.
          */
         Set<I> search(Hasher hasher);
+
+        /**
+         * Gets all the indexes.
+         * @return The set of storage indexes
+         */
+        Set<I> getAll();
 
         /**
          * Gets the number of filters indexed in the system.
@@ -149,7 +161,7 @@ public interface Container<E> {
         int getFilterCount();
 
         /**
-         * Create the index value from the hasher
+         * Creates the index value from the hasher
          * @param hasher the hasher to process
          * @return the index value.
          */
@@ -207,4 +219,6 @@ public interface Container<E> {
          */
         Iterator<Map.Entry<I, List<E>>> list();
     }
+
+
 }

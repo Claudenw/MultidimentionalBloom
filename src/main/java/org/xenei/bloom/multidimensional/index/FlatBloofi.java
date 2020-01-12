@@ -190,6 +190,7 @@ public final class FlatBloofi<I> implements Index<I> {
         for (int i = 0; i < buffer.size(); ++i) {
             long w = ~0l;
             PrimitiveIterator.OfInt iter = hasher.getBits(shape);
+
             while (iter.hasNext()) {
                 w &= buffer.get(i)[iter.nextInt()];
             }
@@ -198,6 +199,7 @@ public final class FlatBloofi<I> implements Index<I> {
                 answer.add(i * Long.SIZE + Long.bitCount(t - 1));
                 w ^= t;
             }
+
         }
         return answer.stream().map( i -> values.get(i) ).collect( Collectors.toSet() );
     }
@@ -210,6 +212,16 @@ public final class FlatBloofi<I> implements Index<I> {
     @Override
     public I create(Hasher hasher) {
         return func.apply(new HasherBloomFilter( hasher, shape ));
+    }
+
+    @Override
+    public Shape getShape() {
+        return shape;
+    }
+
+    @Override
+    public Set<I> getAll() {
+        return new HashSet<I>(values);
     }
 
 }

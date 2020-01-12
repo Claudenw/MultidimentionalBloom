@@ -22,6 +22,7 @@ import java.util.Iterator;
 import java.util.Optional;
 
 import org.apache.commons.collections4.iterators.LazyIteratorChain;
+import org.apache.commons.collections4.iterators.UnmodifiableIterator;
 import org.xenei.bloom.filter.EWAHBloomFilter;
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.hasher.HashFunctionIdentity;
@@ -113,7 +114,7 @@ public class ContainerImpl<E,I> implements Container<E> {
         if (gate.contains(hasher)) {
             Optional<I> idx = index.get(hasher);
             if (idx.isPresent()) {
-                return storage.get(idx.get()).iterator();
+                return getEntryIterator(idx.get());
             }
         }
         return Collections.emptyIterator();
@@ -153,26 +154,34 @@ public class ContainerImpl<E,I> implements Container<E> {
     @Override
     public Iterator<E> search(Hasher hasher) {
         verifyHasher(hasher);
-        return doSearch(hasher);
-    }
 
-    /**
-     * Performs a search using a hasher.
-     * @param hasher the hasher to search with.
-     * @return the stream of matchign objects.
-     */
-    private Iterator<E> doSearch(Hasher hasher) {
+        if (hasher.isEmpty())
+        {
+            Iterator<I> iter = index.getAll().iterator();
+            // we are searching for all the items.
+            return new LazyIteratorChain<E>() {
+                @Override
+                protected Iterator<E> nextIterator(int count) {
+                    return iter.hasNext() ? getEntryIterator(iter.next()) : null;
+                }
+            };
+
+        }
         if (gate.contains(hasher)) {
             Iterator<I> iter = index.search(hasher).iterator();
             return new LazyIteratorChain<E>() {
                 @Override
                 protected Iterator<E> nextIterator(int count) {
-                    return iter.hasNext() ? storage.get(iter.next()).iterator() : null;
+                    return iter.hasNext() ? getEntryIterator(iter.next()) : null;
                 }
             };
         }
         return Collections.emptyListIterator();
 
+    }
+
+    private Iterator<E> getEntryIterator( I index ) {
+        return UnmodifiableIterator.unmodifiableIterator(storage.get(index).iterator());
     }
 
     /**
@@ -211,5 +220,6 @@ public class ContainerImpl<E,I> implements Container<E> {
                             HashFunctionIdentity.asCommonString(hasher.getHashFunctionIdentity()), shape.toString()));
         }
     }
+
 
 }

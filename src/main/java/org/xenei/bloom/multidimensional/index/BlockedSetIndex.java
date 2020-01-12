@@ -301,4 +301,14 @@ public class BlockedSetIndex<I> implements Index<I> {
         return func.apply(new HasherBloomFilter( hasher, shape ));
     }
 
+    @Override
+    public Shape getShape() {
+        return shape;
+    }
+
+    @Override
+    public Set<I> getAll() {
+        return new HashSet<I>( values );
+    }
+
 }

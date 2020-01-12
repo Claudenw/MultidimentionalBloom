@@ -19,6 +19,7 @@ package org.xenei.bloom.multidimensional.index;
 
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -147,6 +148,16 @@ public class Linear<I> implements Index<I> {
     @Override
     public I create(Hasher hasher) {
         return func.apply(new HasherBloomFilter( hasher, shape ));
+    }
+
+    @Override
+    public Shape getShape() {
+        return shape;
+    }
+
+    @Override
+    public Set<I> getAll() {
+        return new HashSet<I>( data.keySet() );
     }
 
 }

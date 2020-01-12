@@ -209,14 +209,15 @@ public abstract class Trie<I> implements Index<I> {
         return (int) ((buffer[idx] >> ofs) & mask);
     }
 
-    /**
-     * Gets the shape of the Bloom filters in this Trie.
-     * @return the shape of the contained Bloom filters.
-     */
-    protected Shape getShape() {
+    @Override
+    public Shape getShape() {
         return shape;
     }
 
+    @Override
+    public Set<I> getAll() {
+        return new HashSet<I>(data.keySet());
+    }
     public int getMaxDepth() {
         return (int) Math.ceil(shape.getNumberOfBits() * 1.0 / getChunkSize());
     }
