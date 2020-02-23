@@ -25,6 +25,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import org.apache.commons.collections4.bloomfilter.hasher.CachingHasher;
 import org.apache.commons.collections4.bloomfilter.hasher.HashFunctionIdentity;
 import org.apache.commons.collections4.bloomfilter.hasher.HashFunctionIdentity.ProcessType;
 import org.apache.commons.collections4.bloomfilter.hasher.HashFunctionIdentity.Signedness;
@@ -32,7 +33,6 @@ import org.apache.commons.collections4.bloomfilter.hasher.HashFunctionIdentityIm
 import org.apache.commons.collections4.bloomfilter.hasher.Shape;
 import org.junit.After;
 import org.junit.Before;
-import org.xenei.bloom.filter.CachingHasher;
 import org.xenei.bloom.multidimensional.Container;
 import org.xenei.bloom.multidimensional.Container.Index;
 import org.xenei.junit.contract.Contract;

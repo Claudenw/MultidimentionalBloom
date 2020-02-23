@@ -26,6 +26,7 @@ import org.apache.commons.collections4.iterators.UnmodifiableIterator;
 import org.xenei.bloom.filter.EWAHBloomFilter;
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.hasher.HashFunctionIdentity;
+import org.apache.commons.collections4.bloomfilter.hasher.HashFunctionValidator;
 import org.apache.commons.collections4.bloomfilter.hasher.Hasher;
 import org.apache.commons.collections4.bloomfilter.hasher.Shape;
 import org.apache.commons.collections4.bloomfilter.CountingBloomFilter;
@@ -212,13 +213,7 @@ public class ContainerImpl<E,I> implements Container<E> {
      * @param hasher the Hasher to check
      */
     protected final void verifyHasher(Hasher hasher) {
-
-        if (HashFunctionIdentity.COMMON_COMPARATOR.compare(shape.getHashFunctionIdentity(),
-                hasher.getHashFunctionIdentity()) != 0) {
-            throw new IllegalArgumentException(
-                    String.format("Hasher (%s) is not the hasher for shape (%s)",
-                            HashFunctionIdentity.asCommonString(hasher.getHashFunctionIdentity()), shape.toString()));
-        }
+        HashFunctionValidator.checkAreEqual( shape.getHashFunctionIdentity(), hasher.getHashFunctionIdentity());
     }
 
 
