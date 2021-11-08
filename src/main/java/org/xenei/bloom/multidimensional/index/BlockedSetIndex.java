@@ -27,13 +27,14 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
-import org.apache.commons.collections4.bloomfilter.BloomFilter;
-import org.apache.commons.collections4.bloomfilter.HasherBloomFilter;
 import org.apache.commons.collections4.bloomfilter.hasher.Hasher;
-import org.apache.commons.collections4.bloomfilter.hasher.Shape;
+import org.apache.commons.collections4.bloomfilter.BitMapProducer;
+import org.apache.commons.collections4.bloomfilter.BloomFilter;
+import org.apache.commons.collections4.bloomfilter.Shape;
 import org.xenei.bloom.filter.EWAHBloomFilter;
 import org.xenei.bloom.multidimensional.Container.Index;
 import com.googlecode.javaewah.datastructure.BitSet;
+
 
 
 /**
@@ -111,25 +112,30 @@ public class BlockedSetIndex<I> implements Index<I> {
     /**
      * Function to convert BloomFilter to index.
      */
-    private final Function<BloomFilter,I> func;
+    private final Function<BitMapProducer,I> func;
 
     /**
      * A bitset representing the free/deleted entries in the list/values.
      */
     private final BitSet empty;
 
+    private static int numberOfBlocks(Shape shape) {
+        return shape.getNumberOfBits() / CHUNK_SIZE + ((shape.getNumberOfBits() % CHUNK_SIZE) > 0?1:0);
+    }
 
+    private static int numberOfBytes(Shape shape) {
+        return shape.getNumberOfBits() / Byte.BYTES + ((shape.getNumberOfBits() % Byte.BYTES) > 0?1:0);
+    }
 
     /**
      * Constructs a BlockedSetIndex.
-     * Uses 1/shape.getProbability() as the estimated number of filters.
      * @param func the function to convert Bloom filter to index object.
      * @param shape the shape of the contained Bloom filters.
      */
-    public BlockedSetIndex(Function<BloomFilter,I> func, Shape shape) {
+    public BlockedSetIndex(Function<BitMapProducer,I> func, Shape shape) {
         this.func = func;
         this.shape = shape;
-        this.list = new BitSet[shape.getNumberOfBytes()][BLOCK_SIZE];
+        this.list = new BitSet[numberOfBlocks(shape)][BLOCK_SIZE];
         this.empty = new BitSet(0);
         this.values = new ArrayList<I>();
         this.valueToIdx = new HashMap<I,Integer>();
@@ -137,15 +143,18 @@ public class BlockedSetIndex<I> implements Index<I> {
 
     @Override
     public Optional<I> get(Hasher hasher) {
-        EWAHBloomFilter filter = new EWAHBloomFilter( hasher, shape );
+        EWAHBloomFilter filter = new EWAHBloomFilter( shape, hasher );
         I result = func.apply(filter);
         return valueToIdx.containsKey( result ) ? Optional.of(result) : Optional.empty();
     }
 
     @Override
-    public void put(I result, Hasher hasher) {
-        if ( ! valueToIdx.containsKey( result ) )
-        {
+    public I put( Hasher hasher) {
+        Optional<I> result = get(hasher);
+        if (result.isEmpty()) {
+
+            EWAHBloomFilter filter = new EWAHBloomFilter( shape, hasher );
+            result = Optional.of( func.apply(filter) );
             int idx = empty.nextSetBit(-1);
             if (idx == -1) {
                 idx = valueToIdx.size();
@@ -156,16 +165,17 @@ public class BlockedSetIndex<I> implements Index<I> {
                 }
             }
 
-            EWAHBloomFilter filter = new EWAHBloomFilter( hasher, shape );
-            long[] bits = filter.getBits();
-            for (int longIdx=0;longIdx<bits.length;longIdx++)
+            BitMapProducer.ArrayBuilder builder = new BitMapProducer.ArrayBuilder( shape );
+            filter.forEachBitMap( builder );
+            long[] bitMap = builder.getArray();
+            for (int longIdx=0;longIdx<bitMap.length;longIdx++)
             {
-                int limit = Integer.min( Long.BYTES*(longIdx+1), shape.getNumberOfBytes());
+                int limit = Integer.min( Long.BYTES*(longIdx+1), numberOfBytes(shape));
                 limit -= (Long.BYTES*longIdx);
                 for (int byteIdx=0;byteIdx<limit;byteIdx++)
                 {
                     int blockIdx = longIdx*Long.BYTES+byteIdx;
-                    int bitIdx = (int)((bits[longIdx] >> byteIdx*Byte.SIZE) & MASK);
+                    int bitIdx = (int)((bitMap[longIdx] >> byteIdx*Byte.SIZE) & MASK);
                     // ignore 0 entries;
                     if (bitIdx != 0)
                     {
@@ -191,9 +201,10 @@ public class BlockedSetIndex<I> implements Index<I> {
             {
                 values.add( null );
             }
-            values.set(idx, result);
-            valueToIdx.put(result, idx);
+            values.set(idx, result.get());
+            valueToIdx.put(result.get(), idx);
         }
+        return result.get();
     }
 
     @Override
@@ -241,17 +252,19 @@ public class BlockedSetIndex<I> implements Index<I> {
 
     @Override
     public Set<I> search(Hasher hasher) {
-        EWAHBloomFilter filter = new EWAHBloomFilter( hasher, shape );
-        long[] bits = filter.getBits();
+        EWAHBloomFilter filter = new EWAHBloomFilter( shape, hasher );
+        BitMapProducer.ArrayBuilder builder = new BitMapProducer.ArrayBuilder( shape );
+        filter.forEachBitMap( builder );
+        long[] bitMap = builder.getArray();
         BitSet answer = null;
-        for (int longIdx=0;longIdx<bits.length;longIdx++)
+        for (int longIdx=0;longIdx<bitMap.length;longIdx++)
         {
-            int limit = Integer.min( Long.BYTES*(longIdx+1), shape.getNumberOfBytes());
+            int limit = Integer.min( Long.BYTES*(longIdx+1), numberOfBytes(shape));
             limit -= (Long.BYTES*longIdx);
             for (int byteIdx=0;byteIdx<limit;byteIdx++)
             {
                 int listIdx = longIdx*Long.BYTES+byteIdx;
-                int bitScan = (int)((bits[longIdx] >> byteIdx*Byte.SIZE) & MASK);
+                int bitScan = (int)((bitMap[longIdx] >> byteIdx*Byte.SIZE) & MASK);
                 if (bitScan != 0)
                 {
                     BitSet union = null;
@@ -294,11 +307,6 @@ public class BlockedSetIndex<I> implements Index<I> {
     @Override
     public int getFilterCount() {
         return valueToIdx.size();
-    }
-
-    @Override
-    public I create(Hasher hasher) {
-        return func.apply(new HasherBloomFilter( hasher, shape ));
     }
 
     @Override

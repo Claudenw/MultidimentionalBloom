@@ -36,7 +36,7 @@ public class Tri8Test {
 
             @Override
             public Trie8<UUID> newInstance() {
-                return new Trie8<UUID>(new ContainerImplTest.Func(),IndexTest.SHAPE);
+                return new Trie8<UUID>(new ContainerImplTest.Func(IndexTest.SHAPE),IndexTest.N,IndexTest.SHAPE);
             }
 
             @Override

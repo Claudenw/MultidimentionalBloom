@@ -21,8 +21,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
+import org.apache.commons.collections4.bloomfilter.BitMapProducer;
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
-import org.apache.commons.collections4.bloomfilter.hasher.Shape;
+import org.apache.commons.collections4.bloomfilter.Shape;
 import org.xenei.bloom.multidimensional.index.tri.Trie;
 
 /**
@@ -73,23 +74,13 @@ public class Trie8<I> extends Trie<I> {
     }
 
     /**
-     * Constructs a Trie8.
-     * Uses 1/shape.getProbability() as the estimated number of filters.
-     * @param func the function to convert Bloom filter to index object.
-     * @param shape the shape of the contained Bloom filters.
-     */
-    public Trie8(Function<BloomFilter,I> func, Shape shape) {
-        super(func, Double.valueOf( 1.0/shape.getProbability() ).intValue(), shape, CHUNK_SIZE, MASK);
-    }
-
-    /**
      * Constructs a Trie8
      * @param func the function to convert Bloom filter to index object.
      * @param the estimated number of Bloom filters to be indexed.
      * @param shape the shape of the contained Bloom filters.
      */
-    public Trie8(Function<BloomFilter,I> func, int estimatedPopulation, Shape shape) {
-        super(func, Double.valueOf( 1.0/shape.getProbability() ).intValue(), shape, CHUNK_SIZE, MASK);
+    public Trie8(Function<BitMapProducer,I> func, int estimatedPopulation, Shape shape) {
+        super(func, estimatedPopulation, shape, CHUNK_SIZE, MASK);
     }
 
 

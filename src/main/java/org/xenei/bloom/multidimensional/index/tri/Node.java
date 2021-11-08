@@ -33,14 +33,14 @@ public interface Node<I> {
      * @param filter the filter to add
      * @return the LeafNode where the filter was added.
      */
-    public LeafNode<I> add(I idx, BloomFilter filter);
+    public LeafNode<I> add(I idx, long[] bitMaps);
 
     /**
      * Removes a Bloom filter from the index.
      * @param filter the filter to remove.
      * @return true if the node is empty after the removal.
      */
-    public boolean remove(BloomFilter filter);
+    public boolean remove(long[] bitMaps);
 
     /**
      * Gets the parent node of this node.

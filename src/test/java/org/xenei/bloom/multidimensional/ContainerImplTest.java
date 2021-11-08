@@ -18,36 +18,40 @@
 package org.xenei.bloom.multidimensional;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.LongConsumer;
 
-import org.apache.commons.collections4.bloomfilter.hasher.DynamicHasher;
-import org.apache.commons.collections4.bloomfilter.hasher.HashFunction;
+import org.apache.commons.codec.digest.MurmurHash3;
+import org.apache.commons.collections4.bloomfilter.BitMapProducer;
+import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.hasher.Hasher;
-import org.apache.commons.collections4.bloomfilter.hasher.Shape;
-import org.apache.commons.collections4.bloomfilter.hasher.function.Murmur128x86Cyclic;
+import org.apache.commons.collections4.bloomfilter.hasher.HasherCollection;
+import org.apache.commons.collections4.bloomfilter.hasher.SimpleHasher;
+import org.apache.commons.collections4.bloomfilter.Shape;
 import org.junit.Test;
 import org.xenei.bloom.multidimensional.Container.Index;
 import org.xenei.bloom.multidimensional.Container.Storage;
 import org.xenei.bloom.multidimensional.index.FlatBloofi;
 import org.xenei.bloom.multidimensional.storage.InMemory;
-import org.apache.commons.collections4.bloomfilter.BloomFilter;
 
 public class ContainerImplTest {
-    HashFunction hashFunction = new Murmur128x86Cyclic();
-    Func func = new Func();
-    Shape shape = new Shape(hashFunction, 3, 1.0 / 3000000);
+    Shape shape = org.apache.commons.collections4.bloomfilter.Shape.Factory.fromNP( 3, 1.0 / 3000000);
+    Func func = new Func(shape);
     Storage<String,UUID> storage = new InMemory<String,UUID>();
     Index<UUID> index = new FlatBloofi<UUID>(func,shape);
-    Container<String> container = new ContainerImpl<String,UUID>(shape, storage, index);
+    Container<String> container = new ContainerImpl<String,UUID>(3000000, shape, storage, index);
 
     @Test
     public void roundTrip() {
         String test = "Hello World";
-        Hasher hasher = new DynamicHasher.Builder(hashFunction).with(test).build();
+        long[] longs = MurmurHash3.hash128( test.getBytes( StandardCharsets.UTF_8 ));
+        Hasher hasher = new SimpleHasher( longs[0], longs[1]);
         container.put(hasher, test);
         List<String> lst = new ArrayList<String>();
         container.get(hasher).forEachRemaining(lst::add);
@@ -56,7 +60,8 @@ public class ContainerImplTest {
     }
 
     private Hasher add(String s) {
-        Hasher hasher = new DynamicHasher.Builder(hashFunction).with(s).build();
+        long[] longs = MurmurHash3.hash128( s.getBytes( StandardCharsets.UTF_8 ));
+        Hasher hasher = new SimpleHasher( longs[0], longs[1]);
         container.put(hasher, s);
         return hasher;
     }
@@ -76,11 +81,15 @@ public class ContainerImplTest {
 
     private Hasher makeHasher(String s) {
         String[] parts = s.split(" ");
-        Hasher.Builder builder = new DynamicHasher.Builder(hashFunction);
+        HasherCollection hashers = new HasherCollection();
+        //long[] longs = MurmurHash3.hash128( geoName.feature_code.getBytes( StandardCharsets.UTF_8 ));
+
+
         for (String part : parts) {
-            builder.with(part);
+            long[] longs = MurmurHash3.hash128( part.getBytes( StandardCharsets.UTF_8 ));
+            hashers.add( new SimpleHasher( longs[0], longs[1] ));
         }
-        return builder.build();
+        return hashers;
 
     }
 
@@ -102,8 +111,8 @@ public class ContainerImplTest {
         hasher = makeHasher("World");
         container.search(hasher).forEachRemaining(lst::add);
         assertEquals(2, lst.size());
-        assertEquals(test, lst.get(0));
-        assertEquals(test3, lst.get(1));
+        assertTrue(lst.contains( test ));
+        assertTrue(lst.contains(test3));
     }
 
     @Test
@@ -135,28 +144,36 @@ public class ContainerImplTest {
      * A standard Func to use in testing where UUID creation is desired.
      *
      */
-    public static class Func implements Function<BloomFilter,UUID> {
+    public static class Func implements Function<BitMapProducer,UUID> {
+        private int numberOfBytes;
 
-        private byte[] getBytes( BloomFilter filter)
+        public Func(Shape shape) {
+            numberOfBytes = shape.getNumberOfBits() / Byte.SIZE + ((shape.getNumberOfBits() % Byte.SIZE) > 0?1:0);
+        }
+
+        private byte[] getBytes( BitMapProducer bitMapProducer)
         {
-            byte[] buffer = new byte[filter.getShape().getNumberOfBytes()];
-            long[] lBuffer = filter.getBits();
-            for (int i=0;i<buffer.length;i++)
-            {
-                int longIdx = i / Long.BYTES;
-                int longOfs = i % Long.BYTES;
-                if (longIdx >= lBuffer.length)
-                {
-                    return buffer;
+            byte[] buffer = new byte[numberOfBytes];
+
+            bitMapProducer.forEachBitMap( new LongConsumer() {
+            int idx = 0;
+            @Override
+            public void accept(long word) {
+                for (int longOfs=0;longOfs<Long.BYTES;longOfs++) {
+                    buffer[idx++] = (byte) ((word>>(Byte.SIZE * longOfs))  & 0xFFL);
+                    if (idx == numberOfBytes) {
+                        return;
+                    }
                 }
-                buffer[i] = (byte) ((lBuffer[longIdx]>>(Byte.SIZE * longOfs))  & 0xFFL);
             }
+
+            });
             return buffer;
         }
 
         @Override
-        public UUID apply(BloomFilter filter) {
-            return UUID.nameUUIDFromBytes(getBytes( filter ));
+        public UUID apply(BitMapProducer bitMapProducer) {
+            return UUID.nameUUIDFromBytes(getBytes( bitMapProducer ));
         }
 
     }

@@ -28,10 +28,10 @@ import java.util.function.Function;
 import java.util.function.IntConsumer;
 import java.util.stream.Collectors;
 
-import org.apache.commons.collections4.bloomfilter.BloomFilter;
-import org.apache.commons.collections4.bloomfilter.HasherBloomFilter;
 import org.apache.commons.collections4.bloomfilter.hasher.Hasher;
-import org.apache.commons.collections4.bloomfilter.hasher.Shape;
+import org.apache.commons.collections4.bloomfilter.BitMapProducer;
+import org.apache.commons.collections4.bloomfilter.BloomFilter;
+import org.apache.commons.collections4.bloomfilter.Shape;
 import org.xenei.bloom.filter.EWAHBloomFilter;
 import org.xenei.bloom.multidimensional.Container.Index;
 import com.googlecode.javaewah.datastructure.BitSet;
@@ -72,7 +72,7 @@ public final class FlatBloofi<I> implements Index<I> {
     /**
      * Function to convert Hasher to index.
      */
-    private final Function<BloomFilter,I> func;
+    private final Function<BitMapProducer,I> func;
 
 
     /**
@@ -80,7 +80,7 @@ public final class FlatBloofi<I> implements Index<I> {
      * @param func the function to convert Bloom filter to index object.
      * @param shape the Shape of the contained Bloom filters.
      */
-    public FlatBloofi(Function<BloomFilter,I> func, Shape shape) {
+    public FlatBloofi(Function<BitMapProducer,I> func, Shape shape) {
         this.func = func;
         this.shape = shape;
         this.buffer = new ArrayList<long[]>();
@@ -108,7 +108,7 @@ public final class FlatBloofi<I> implements Index<I> {
     private void setBloomAt(int idx, BloomFilter filter) {
         final long[] mybuffer = buffer.get(idx / 64);
         final long mask = (1l << idx);
-        filter.getHasher().getBits(shape).forEachRemaining((IntConsumer) i -> mybuffer[i] |= mask);
+        filter.forEachIndex( i -> mybuffer[i] |= mask);
     }
 
     @Override
@@ -116,7 +116,7 @@ public final class FlatBloofi<I> implements Index<I> {
         BitSet answer = new BitSet(busy.size());
         answer.or(busy);
         Set<Integer> indexes = new HashSet<Integer>();
-        hasher.getBits(shape).forEachRemaining((Consumer<Integer>) indexes::add);
+        hasher.indices(shape).forEachIndex( indexes::add );
 
         for (int bufferNumber = 0; bufferNumber < buffer.size(); ++bufferNumber) {
             if (answer.cardinality() == 0) {
@@ -150,8 +150,9 @@ public final class FlatBloofi<I> implements Index<I> {
     }
 
     @Override
-    public void put(I result, Hasher hasher) {
-        if (get( hasher ).isEmpty())
+    public I put(Hasher hasher) {
+        Optional<I> result = get(hasher);
+        if (result.isEmpty())
         {
             int idx = busy.nextUnsetBit(0);
             if (idx < 0) {
@@ -162,15 +163,18 @@ public final class FlatBloofi<I> implements Index<I> {
                 // Long.SIZE)).intValue();
                 buffer.add(new long[shape.getNumberOfBits()]);
             }
-            BloomFilter filter = new EWAHBloomFilter( hasher, shape);
+            BloomFilter filter = new EWAHBloomFilter(shape, hasher);
             setBloomAt(idx, filter);
             busy.set(idx);
             while (values.size() < idx+1)
             {
                 values.add( null );
             }
-            values.set(idx, result);
+
+            result = Optional.of(func.apply(filter));
+            values.set(idx, result.get());
         }
+        return result.get();
     }
 
     @Override
@@ -187,17 +191,29 @@ public final class FlatBloofi<I> implements Index<I> {
     @Override
     public Set<I> search(Hasher hasher) {
         Set<Integer> answer = new HashSet<Integer>();
-        for (int i = 0; i < buffer.size(); ++i) {
-            long w = ~0l;
-            PrimitiveIterator.OfInt iter = hasher.getBits(shape);
 
-            while (iter.hasNext()) {
-                w &= buffer.get(i)[iter.nextInt()];
+        class SearchFN implements IntConsumer {
+            long w = ~0l;
+            long[] buffer;
+            SearchFN(long[] buffer) {
+                this.buffer =buffer;
             }
-            while (w != 0) {
-                long t = w & -w;
+
+            @Override
+            public void accept(int idx) {
+                w &= buffer[idx];
+            }
+        };
+
+        for (int i = 0; i < buffer.size(); ++i) {
+            SearchFN fn = new SearchFN( buffer.get(i) );
+
+            hasher.indices(shape).forEachIndex( fn );
+
+            while (fn.w != 0) {
+                long t = fn.w & -fn.w;
                 answer.add(i * Long.SIZE + Long.bitCount(t - 1));
-                w ^= t;
+                fn.w ^= t;
             }
 
         }
@@ -207,11 +223,6 @@ public final class FlatBloofi<I> implements Index<I> {
     @Override
     public int getFilterCount() {
         return values.size();
-    }
-
-    @Override
-    public I create(Hasher hasher) {
-        return func.apply(new HasherBloomFilter( hasher, shape ));
     }
 
     @Override

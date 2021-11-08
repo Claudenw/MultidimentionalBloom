@@ -21,13 +21,16 @@ import java.nio.LongBuffer;
 import java.util.BitSet;
 import java.util.PrimitiveIterator.OfInt;
 import java.util.function.IntConsumer;
+import java.util.function.LongConsumer;
 
-import org.apache.commons.collections4.bloomfilter.AbstractBloomFilter;
+import org.apache.commons.collections4.bloomfilter.BitMapProducer;
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
+import org.apache.commons.collections4.bloomfilter.IndexProducer;
 import org.apache.commons.collections4.bloomfilter.hasher.Hasher;
-import org.apache.commons.collections4.bloomfilter.hasher.Shape;
-import org.apache.commons.collections4.bloomfilter.hasher.StaticHasher;
+import org.apache.commons.collections4.bloomfilter.Shape;
+import org.apache.commons.collections4.bloomfilter.exceptions.NoMatchException;
 
+import com.googlecode.javaewah.ChunkIterator;
 import com.googlecode.javaewah.EWAHCompressedBitmap;
 
 /**
@@ -36,7 +39,7 @@ import com.googlecode.javaewah.EWAHCompressedBitmap;
  * low number of functions (k value).
  *
  */
-public class EWAHBloomFilter extends AbstractBloomFilter {
+public class EWAHBloomFilter implements BloomFilter {
 
     /**
      * The bitset that defines this BloomFilter.
@@ -44,15 +47,19 @@ public class EWAHBloomFilter extends AbstractBloomFilter {
     private EWAHCompressedBitmap bitSet;
 
     /**
+     * The shape of this filter
+     */
+    private final Shape shape;
+
+    /**
      * Constructs a filter from a hasher and shape.
      *
      * @param hasher the hasher to use
      * @param shape  the shape.
      */
-    public EWAHBloomFilter(Hasher hasher, Shape shape) {
+    public EWAHBloomFilter(Shape shape, Hasher hasher) {
         this(shape);
-        verifyHasher(hasher);
-        hasher.getBits(shape).forEachRemaining((IntConsumer) bitSet::set);
+        hasher.indices(shape).forEachIndex((IntConsumer) bitSet::set);
     }
 
     /**
@@ -61,44 +68,8 @@ public class EWAHBloomFilter extends AbstractBloomFilter {
      * @param shape The BloomFilter.Shape to define this BloomFilter.
      */
     public EWAHBloomFilter(Shape shape) {
-        super(shape);
+        this.shape = shape;
         this.bitSet = new EWAHCompressedBitmap();
-    }
-
-    @Override
-    public StaticHasher getHasher() {
-        return new StaticHasher(bitSet.iterator(), getShape());
-    }
-
-    @Override
-    public long[] getBits() {
-        BitSet bs = new BitSet();
-        bitSet.forEach(bs::set);
-        return bs.toLongArray();
-    }
-
-    @Override
-    public void merge(BloomFilter other) {
-        verifyShape(other);
-        bitSet = bitSet.or(new EWAHCompressedBitmap(LongBuffer.wrap(other.getBits())));
-    }
-
-    @Override
-    public void merge(Hasher hasher) {
-        verifyHasher(hasher);
-        hasher.getBits(getShape()).forEachRemaining((IntConsumer) bitSet::set);
-    }
-
-    @Override
-    public boolean contains(Hasher hasher) {
-        verifyHasher(hasher);
-        OfInt iter = hasher.getBits(getShape());
-        while (iter.hasNext()) {
-            if (!bitSet.get(iter.nextInt())) {
-                return false;
-            }
-        }
-        return true;
     }
 
     @Override
@@ -111,42 +82,46 @@ public class EWAHBloomFilter extends AbstractBloomFilter {
         return bitSet.toString();
     }
 
-    /**
-     * Merge an EWAHBloomFilter into this one. <p> This method takes advantage of
-     * the internal structure of the EWAHBloomFilter. </p>
-     *
-     * @param other the other EWAHBloomFilter filter.
-     */
-    public void merge(EWAHBloomFilter other) {
-        verifyShape(other);
-        bitSet = bitSet.or(other.bitSet);
+    @Override
+    public void forEachIndex(IntConsumer consumer) {
+        bitSet.iterator().forEachRemaining( x -> consumer.accept(x));
     }
 
     @Override
-    public int andCardinality(BloomFilter other) {
-        if (other instanceof EWAHBloomFilter) {
-            verifyShape(other);
-            return bitSet.andCardinality(((EWAHBloomFilter) other).bitSet);
-        }
-        return super.andCardinality(other);
+    public void forEachBitMap(LongConsumer consumer) {
+        BitMapProducer.fromIndexProducer( this, shape).forEachBitMap(consumer);
     }
 
     @Override
-    public int orCardinality(BloomFilter other) {
-        if (other instanceof EWAHBloomFilter) {
-            verifyShape(other);
-            return bitSet.orCardinality(((EWAHBloomFilter) other).bitSet);
-        }
-        return super.orCardinality(other);
+    public boolean isSparse() {
+        return true;
     }
 
     @Override
-    public int xorCardinality(BloomFilter other) {
+    public Shape getShape() {
+        return shape;
+    }
+
+    @Override
+    public boolean contains(IndexProducer indexProducer) {
+        EWAHCompressedBitmap producerBitSet = new EWAHCompressedBitmap();
+        indexProducer.forEachIndex((IntConsumer) producerBitSet::set);
+        return bitSet.andCardinality(producerBitSet) == producerBitSet.cardinality();
+    }
+
+    @Override
+    public boolean contains(BitMapProducer bitMapProducer) {
+        return contains( IndexProducer.fromBitMapProducer(bitMapProducer));
+    }
+
+    @Override
+    public boolean mergeInPlace(BloomFilter other) {
         if (other instanceof EWAHBloomFilter) {
-            verifyShape(other);
-            return bitSet.xorCardinality(((EWAHBloomFilter) other).bitSet);
+            bitSet = bitSet.or(((EWAHBloomFilter)other).bitSet);
+        } else {
+            other.forEachIndex( bitSet::set );
         }
-        return super.xorCardinality(other);
+        return true;
     }
 
 }

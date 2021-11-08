@@ -36,7 +36,7 @@ public class RangePackedTest {
 
             @Override
             public RangePacked<UUID> newInstance() {
-                return new RangePacked<UUID>(new ContainerImplTest.Func(),IndexTest.SHAPE);
+                return new RangePacked<UUID>(new ContainerImplTest.Func(IndexTest.SHAPE),IndexTest.SHAPE);
             }
 
             @Override

@@ -36,7 +36,7 @@ public class BlockedSetIndexTest {
 
             @Override
             public BlockedSetIndex<UUID> newInstance() {
-                return new BlockedSetIndex<UUID>(new ContainerImplTest.Func(),IndexTest.SHAPE);
+                return new BlockedSetIndex<UUID>(new ContainerImplTest.Func(IndexTest.SHAPE),IndexTest.SHAPE);
             }
 
             @Override

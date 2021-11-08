@@ -36,7 +36,7 @@ public class FlatBloofiTest {
 
             @Override
             public FlatBloofi<UUID> newInstance() {
-                return new FlatBloofi<UUID>(new ContainerImplTest.Func(), IndexTest.SHAPE);
+                return new FlatBloofi<UUID>(new ContainerImplTest.Func(IndexTest.SHAPE), IndexTest.SHAPE);
             }
 
             @Override

@@ -36,7 +36,7 @@ public class LinearTest {
 
             @Override
             public Linear<UUID> newInstance() {
-                return new Linear<UUID>(new ContainerImplTest.Func(), IndexTest.SHAPE);
+                return new Linear<UUID>(new ContainerImplTest.Func(IndexTest.SHAPE), IndexTest.N, IndexTest.SHAPE);
             }
 
             @Override

@@ -27,13 +27,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.LongConsumer;
 import java.util.stream.Collectors;
 
-import org.apache.commons.collections4.bloomfilter.BitSetBloomFilter;
+import org.apache.commons.collections4.bloomfilter.BitMapProducer;
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
-import org.apache.commons.collections4.bloomfilter.HasherBloomFilter;
 import org.apache.commons.collections4.bloomfilter.hasher.Hasher;
-import org.apache.commons.collections4.bloomfilter.hasher.Shape;
+import org.apache.commons.collections4.bloomfilter.Shape;
+import org.apache.commons.collections4.bloomfilter.SimpleBloomFilter;
 import org.xenei.bloom.multidimensional.Container.Index;
 
 /**
@@ -78,7 +79,7 @@ public abstract class Trie<I> implements Index<I> {
     /**
      * Function to convert Hasher to index.
      */
-    private final Function<BloomFilter,I> func;
+    private final Function<BitMapProducer,I> func;
 
     /**
      * Constructs a Trie.
@@ -87,7 +88,7 @@ public abstract class Trie<I> implements Index<I> {
      * @param chunkSize the size of the Trie chunks in bits.
      * @param mask the mask to extract a single chunk.
      */
-    protected Trie(Function<BloomFilter,I> func,int estimatedPopulation, Shape shape, int chunkSize, long mask) {
+    protected Trie(Function<BitMapProducer,I> func,int estimatedPopulation, Shape shape, int chunkSize, long mask) {
         this.func = func;
         this.shape = shape;
         this.chunkSize = chunkSize;
@@ -114,10 +115,25 @@ public abstract class Trie<I> implements Index<I> {
     }
 
     @Override
-    public final void put(I idx, Hasher hasher) {
-        BloomFilter filter = new BitSetBloomFilter(hasher, shape);
-        LeafNode<I> leafNode = root.add( idx, filter );
-        data.put(leafNode.getIdx(), leafNode);
+    public final I put(Hasher hasher) {
+        return put( new SimpleBloomFilter(shape,hasher) );
+    }
+
+    public final I put(BloomFilter filter) {
+        BitMapProducer.ArrayBuilder builder = new BitMapProducer.ArrayBuilder( shape );
+        filter.forEachBitMap( builder );
+        return put( builder.getArray() );
+    }
+
+    public final I put(long[] bitMaps) {
+        Optional<I> result = get( bitMaps );
+        if (result.isEmpty()) {
+            I idx = func.apply(BitMapProducer.fromLongArray(bitMaps));
+            LeafNode<I> leafNode = root.add( idx, bitMaps );
+            data.put(leafNode.getIdx(), leafNode);
+            result = Optional.of(idx);
+        }
+        return result.get();
     }
 
     @Override
@@ -131,17 +147,34 @@ public abstract class Trie<I> implements Index<I> {
 
     @Override
     public final Set<I> search(Hasher hasher) {
-        BloomFilter filter = new BitSetBloomFilter(hasher, shape);
-        Set<I> result = new HashSet<I>();
-        root.search(result, filter);
-        return result;
+        return search( new SimpleBloomFilter(shape,hasher));
     }
 
+    public final Set<I> search(BloomFilter filter) {
+        BitMapProducer.ArrayBuilder builder = new BitMapProducer.ArrayBuilder( shape );
+        filter.forEachBitMap( builder );
+        return search( builder.getArray() );
+    }
+
+    public final Set<I> search(long[] bitMaps) {
+        Set<I> result = new HashSet<I>();
+        root.search(result, bitMaps);
+        return result;
+
+    }
     @Override
     public Optional<I> get(Hasher hasher) {
-        BloomFilter filter = new BitSetBloomFilter(hasher, shape);
-        long[] filterLongs = filter.getBits();
-        List<LeafNode<I>> candidates = search(hasher).stream().map(data::get).filter(l -> l != null).collect(Collectors.toList());
+        return get( new SimpleBloomFilter(shape,hasher) );
+    }
+
+    public Optional<I> get(BloomFilter filter) {
+        BitMapProducer.ArrayBuilder builder = new BitMapProducer.ArrayBuilder( shape );
+        filter.forEachBitMap( builder );
+        return get( builder.getArray());
+    }
+
+    public Optional<I> get(long[] bitMaps) {
+        List<LeafNode<I>> candidates = search(bitMaps).stream().map(data::get).filter(l -> l != null).collect(Collectors.toList());
         I result = null;
         for (LeafNode<I> leaf : candidates) {
             List<InnerNode<I>> lst = new ArrayList<InnerNode<I>>();
@@ -152,7 +185,7 @@ public abstract class Trie<I> implements Index<I> {
             }
             Collections.reverse(lst);
             long[] values = assembleLongs(lst, leaf);
-            if (Arrays.equals(values, filterLongs)) {
+            if (Arrays.equals(values, bitMaps)) {
                 if (result != null) {
                     throw new IllegalStateException("Too many results");
                 }
@@ -197,16 +230,17 @@ public abstract class Trie<I> implements Index<I> {
      * @param level the level of the chunk.
      * @return the specified chunk.
      */
-    public final int getChunk(BloomFilter filter, int level) {
-        long[] buffer = filter.getBits();
+    public final int getChunk(long[] bitMaps, int level) {
 
-        int idx = level / Long.BYTES;
-        if (idx >= buffer.length) {
+        int chunkOffset = level * chunkSize;
+
+        int idx = chunkOffset / Long.SIZE;
+        if (idx >= bitMaps.length) {
             return 0x0;
         }
-        int ofs = Math.floorMod(level * chunkSize, Long.SIZE);
+        int ofs = Math.floorMod(chunkOffset, Long.SIZE);
 
-        return (int) ((buffer[idx] >> ofs) & mask);
+        return (int) ((bitMaps[idx] >> ofs) & mask);
     }
 
     @Override
@@ -225,11 +259,6 @@ public abstract class Trie<I> implements Index<I> {
     @Override
     public int getFilterCount() {
         return data.size();
-    }
-
-    @Override
-    public I create(Hasher hasher) {
-        return func.apply(new HasherBloomFilter( hasher, shape ));
     }
 
 }

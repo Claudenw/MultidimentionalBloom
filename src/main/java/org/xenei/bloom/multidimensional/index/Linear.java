@@ -26,10 +26,10 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.apache.commons.collections4.bloomfilter.BloomFilter;
-import org.apache.commons.collections4.bloomfilter.HasherBloomFilter;
 import org.apache.commons.collections4.bloomfilter.hasher.Hasher;
-import org.apache.commons.collections4.bloomfilter.hasher.Shape;
+import org.apache.commons.collections4.bloomfilter.BitMapProducer;
+import org.apache.commons.collections4.bloomfilter.BloomFilter;
+import org.apache.commons.collections4.bloomfilter.Shape;
 import org.xenei.bloom.filter.EWAHBloomFilter;
 import org.xenei.bloom.multidimensional.Container.Index;
 
@@ -54,7 +54,7 @@ public class Linear<I> implements Index<I> {
     /**
      * Function to convert BloomFilter to index.
      */
-    private final Function<BloomFilter,I> func;
+    private final Function<BitMapProducer,I> func;
 
     /**
      * A comparator for bloom filters to determine if they are bit for bit identical.
@@ -78,8 +78,12 @@ public class Linear<I> implements Index<I> {
                     return 1;
                 }
             }
-            long[] num1 = filter1.getBits();
-            long[] num2 = filter2.getBits();
+            BitMapProducer.ArrayBuilder builder = new BitMapProducer.ArrayBuilder( filter1.getShape());
+            filter1.forEachBitMap( builder );
+            long[] num1 = builder.getArray();
+            builder = new BitMapProducer.ArrayBuilder( filter2.getShape());
+            filter2.forEachBitMap( builder );
+            long[] num2 = builder.getArray();
             int limit = Integer.min(num1.length, num2.length);
             for (int i = 0; i < limit; i++) {
                 int result = Long.compare(num1[i], num2[i]);
@@ -93,21 +97,11 @@ public class Linear<I> implements Index<I> {
 
     /**
      * Constructs the Linear index.
-     * Uses 1/shape.getProbability() as the estimated number of filters.
-     * @param func The function to convert bloom filter to index object.
-     * @param shape the shape of the bloom filters.
-     */
-    public Linear(Function<BloomFilter,I> func, Shape shape) {
-        this( func, Double.valueOf( 1.0/shape.getProbability() ).intValue(), shape );
-    }
-
-    /**
-     * Constructs the Linear index.
      * @param func The function to convert bloom filter to index object.
      * @param estimatedPopulation the estimated number of Bloom filters to index.
      * @param shape the shape of the bloom filters.
      */
-    public Linear(Function<BloomFilter,I> func, int estimatedPopulation, Shape shape) {
+    public Linear(Function<BitMapProducer,I> func, int estimatedPopulation, Shape shape) {
         this.shape = shape;
         this.func = func;
         data = new HashMap<I,BloomFilter>(estimatedPopulation);
@@ -115,15 +109,18 @@ public class Linear<I> implements Index<I> {
 
     @Override
     public Optional<I> get(Hasher hasher) {
-        BloomFilter bf = new EWAHBloomFilter(hasher, shape);
+        BloomFilter bf = new EWAHBloomFilter(shape,hasher);
         return data.entrySet().stream()
                 .filter( entry -> {return comp.compare(entry.getValue(), bf) == 0;})
                 .map( Map.Entry::getKey ).findFirst();
     }
 
     @Override
-    public void put(I idx, Hasher hasher) {
-        data.put( create(hasher), new EWAHBloomFilter(hasher, shape));
+    public I put( Hasher hasher) {
+        BloomFilter filter = new EWAHBloomFilter(shape, hasher);
+        I result = func.apply(filter);
+        data.put( result, filter);
+        return result;
     }
 
     @Override
@@ -133,7 +130,7 @@ public class Linear<I> implements Index<I> {
 
     @Override
     public Set<I> search(Hasher hasher) {
-        BloomFilter bf = new EWAHBloomFilter(hasher, shape);
+        BloomFilter bf = new EWAHBloomFilter(shape, hasher);
         return data.entrySet().stream()
                 .filter( entry -> {return entry.getValue().contains(bf);})
                 .map( Map.Entry::getKey ).collect( Collectors.toSet() );
@@ -143,11 +140,6 @@ public class Linear<I> implements Index<I> {
     @Override
     public int getFilterCount() {
         return data.size();
-    }
-
-    @Override
-    public I create(Hasher hasher) {
-        return func.apply(new HasherBloomFilter( hasher, shape ));
     }
 
     @Override

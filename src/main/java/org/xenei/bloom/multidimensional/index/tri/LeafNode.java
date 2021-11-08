@@ -17,8 +17,6 @@
  */
 package org.xenei.bloom.multidimensional.index.tri;
 
-import org.apache.commons.collections4.bloomfilter.BloomFilter;
-
 /**
  * A leaf node in the Trie.
  * A leaf node contains a single Bloom filter index.
@@ -58,12 +56,12 @@ public class LeafNode<I> implements Node<I> {
     }
 
     @Override
-    public LeafNode<I> add(I idx, BloomFilter filter) {
+    public LeafNode<I> add(I idx, long[] bitMap) {
         return this;
     }
 
     @Override
-    public boolean remove(BloomFilter filter) {
+    public boolean remove(long[] bitMap) {
         return true;
     }
 

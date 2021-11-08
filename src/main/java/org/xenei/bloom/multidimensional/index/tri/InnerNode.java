@@ -19,8 +19,6 @@ package org.xenei.bloom.multidimensional.index.tri;
 
 import java.util.Set;
 
-import org.apache.commons.collections4.bloomfilter.BloomFilter;
-
 /**
  * An inner Trie node.
  *
@@ -79,8 +77,8 @@ public class InnerNode<I> implements Node<I> {
     }
 
     @Override
-    public LeafNode<I> add(I idx, BloomFilter filter) {
-        int chunk = trie.getChunk(filter, level);
+    public LeafNode<I> add(I idx, long[] bitMaps) {
+        int chunk = trie.getChunk(bitMaps, level);
         if (nodes[chunk] == null) {
             if ((level + 1) == trie.getMaxDepth()) {
                 nodes[chunk] = new LeafNode<I>(idx, this);
@@ -88,14 +86,14 @@ public class InnerNode<I> implements Node<I> {
                 nodes[chunk] = new InnerNode<I>(level + 1, trie, this);
             }
         }
-        return nodes[chunk].add(idx, filter);
+        return nodes[chunk].add(idx, bitMaps);
     }
 
     @Override
-    public boolean remove(BloomFilter filter) {
-        int chunk = trie.getChunk(filter, level);
+    public boolean remove(long[] bitMaps) {
+        int chunk = trie.getChunk(bitMaps, level);
         if (nodes[chunk] != null) {
-            if (nodes[chunk].remove(filter)) {
+            if (nodes[chunk].remove(bitMaps)) {
                 nodes[chunk] = null;
             }
             int buckets = 1 << trie.getChunkSize();
@@ -115,8 +113,8 @@ public class InnerNode<I> implements Node<I> {
      * @param indexes The set of Bloom filter indexes.
      * @param filter the filter we are looking for.
      */
-    public void search(Set<I> indexes, BloomFilter filter) {
-        int[] nodeIdxs = trie.getNodeIndexes(trie.getChunk(filter, level));
+    public void search(Set<I> indexes, long[] bitMaps) {
+        int[] nodeIdxs = trie.getNodeIndexes(trie.getChunk(bitMaps, level));
         if (isBaseNode()) {
             for (int i : nodeIdxs) {
                 if (nodes[i] != null) {
@@ -126,7 +124,7 @@ public class InnerNode<I> implements Node<I> {
         } else {
             for (int i : nodeIdxs) {
                 if (nodes[i] != null) {
-                    ((InnerNode<I>) nodes[i]).search(indexes, filter);
+                    ((InnerNode<I>) nodes[i]).search(indexes, bitMaps);
                 }
             }
         }

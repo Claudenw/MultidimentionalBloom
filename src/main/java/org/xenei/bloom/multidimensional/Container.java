@@ -26,7 +26,7 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 import org.apache.commons.collections4.bloomfilter.hasher.Hasher;
-import org.apache.commons.collections4.bloomfilter.hasher.Shape;
+import org.apache.commons.collections4.bloomfilter.Shape;
 
 /**
  * A container that implements multidimensional Bloom filter storage.
@@ -131,7 +131,7 @@ public interface Container<E> {
          * @param hasher the hasher to add
          * @return the index of the storage collection.
          */
-        void put( I idx, Hasher hasher);
+        I put( Hasher hasher);
 
         /**
          * Removes the filter at the storage index from the index.
@@ -159,13 +159,15 @@ public interface Container<E> {
          * @return The number of filters indexed in the system.
          */
         int getFilterCount();
-
-        /**
-         * Creates the index value from the hasher
-         * @param hasher the hasher to process
-         * @return the index value.
-         */
-        I create(Hasher hasher);
+//
+//        /**
+//         * Creates the index value from the hasher.
+//         * If the hasher exists it in the index it must return the index that the hasher is
+//         * currently using, otherwise return a new index.
+//         * @param hasher the hasher to process
+//         * @return the index value.
+//         */
+//        I create(Hasher hasher);
     }
 
     /**
