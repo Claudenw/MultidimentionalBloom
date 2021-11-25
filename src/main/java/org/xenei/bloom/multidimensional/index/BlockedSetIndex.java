@@ -151,7 +151,7 @@ public class BlockedSetIndex<I> implements Index<I> {
     @Override
     public I put( Hasher hasher) {
         Optional<I> result = get(hasher);
-        if (result.isEmpty()) {
+        if ( !result.isPresent()) {
 
             EWAHBloomFilter filter = new EWAHBloomFilter( shape, hasher );
             result = Optional.of( func.apply(filter) );

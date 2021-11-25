@@ -152,7 +152,7 @@ public final class FlatBloofi<I> implements Index<I> {
     @Override
     public I put(Hasher hasher) {
         Optional<I> result = get(hasher);
-        if (result.isEmpty())
+        if (!result.isPresent())
         {
             int idx = busy.nextUnsetBit(0);
             if (idx < 0) {

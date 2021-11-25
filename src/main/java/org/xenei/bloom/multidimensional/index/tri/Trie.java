@@ -127,7 +127,7 @@ public abstract class Trie<I> implements Index<I> {
 
     public final I put(long[] bitMaps) {
         Optional<I> result = get( bitMaps );
-        if (result.isEmpty()) {
+        if ( ! result.isPresent()) {
             I idx = func.apply(BitMapProducer.fromLongArray(bitMaps));
             LeafNode<I> leafNode = root.add( idx, bitMaps );
             data.put(leafNode.getIdx(), leafNode);

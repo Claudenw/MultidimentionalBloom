@@ -139,7 +139,7 @@ public final class RangePacked<I> implements Index<I> {
     @Override
     public I put(Hasher hasher) {
         Optional<I> result = get(hasher);
-        if (result.isEmpty())
+        if ( ! result.isPresent())
         {
             I idx = func.apply(new SimpleBloomFilter( shape, hasher ));
             Integer i = valueToIdx.get(idx);
