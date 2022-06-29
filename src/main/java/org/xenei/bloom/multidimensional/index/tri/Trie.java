@@ -27,12 +27,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.function.LongConsumer;
 import java.util.stream.Collectors;
 
 import org.apache.commons.collections4.bloomfilter.BitMapProducer;
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
-import org.apache.commons.collections4.bloomfilter.hasher.Hasher;
+import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.apache.commons.collections4.bloomfilter.Shape;
 import org.apache.commons.collections4.bloomfilter.SimpleBloomFilter;
 import org.xenei.bloom.multidimensional.Container.Index;
@@ -120,15 +119,13 @@ public abstract class Trie<I> implements Index<I> {
     }
 
     public final I put(BloomFilter filter) {
-        BitMapProducer.ArrayBuilder builder = new BitMapProducer.ArrayBuilder( shape );
-        filter.forEachBitMap( builder );
-        return put( builder.getArray() );
+        return put( filter.asBitMapArray() );
     }
 
     public final I put(long[] bitMaps) {
         Optional<I> result = get( bitMaps );
         if ( ! result.isPresent()) {
-            I idx = func.apply(BitMapProducer.fromLongArray(bitMaps));
+            I idx = func.apply(BitMapProducer.fromBitMapArray(bitMaps));
             LeafNode<I> leafNode = root.add( idx, bitMaps );
             data.put(leafNode.getIdx(), leafNode);
             result = Optional.of(idx);
@@ -151,9 +148,7 @@ public abstract class Trie<I> implements Index<I> {
     }
 
     public final Set<I> search(BloomFilter filter) {
-        BitMapProducer.ArrayBuilder builder = new BitMapProducer.ArrayBuilder( shape );
-        filter.forEachBitMap( builder );
-        return search( builder.getArray() );
+        return search( filter.asBitMapArray()  );
     }
 
     public final Set<I> search(long[] bitMaps) {
@@ -168,9 +163,7 @@ public abstract class Trie<I> implements Index<I> {
     }
 
     public Optional<I> get(BloomFilter filter) {
-        BitMapProducer.ArrayBuilder builder = new BitMapProducer.ArrayBuilder( shape );
-        filter.forEachBitMap( builder );
-        return get( builder.getArray());
+        return get( filter.asBitMapArray());
     }
 
     public Optional<I> get(long[] bitMaps) {

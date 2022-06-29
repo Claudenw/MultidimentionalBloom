@@ -22,13 +22,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.PrimitiveIterator;
-import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.IntConsumer;
+import java.util.function.IntPredicate;
 import java.util.stream.Collectors;
 
-import org.apache.commons.collections4.bloomfilter.hasher.Hasher;
+import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.apache.commons.collections4.bloomfilter.BitMapProducer;
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.Shape;
@@ -108,7 +106,7 @@ public final class FlatBloofi<I> implements Index<I> {
     private void setBloomAt(int idx, BloomFilter filter) {
         final long[] mybuffer = buffer.get(idx / 64);
         final long mask = (1l << idx);
-        filter.forEachIndex( i -> mybuffer[i] |= mask);
+        filter.forEachIndex( i -> { mybuffer[i] |= mask; return true; });
     }
 
     @Override
@@ -192,7 +190,7 @@ public final class FlatBloofi<I> implements Index<I> {
     public Set<I> search(Hasher hasher) {
         Set<Integer> answer = new HashSet<Integer>();
 
-        class SearchFN implements IntConsumer {
+        class SearchFN implements IntPredicate {
             long w = ~0l;
             long[] buffer;
             SearchFN(long[] buffer) {
@@ -200,8 +198,9 @@ public final class FlatBloofi<I> implements Index<I> {
             }
 
             @Override
-            public void accept(int idx) {
+            public boolean test(int idx) {
                 w &= buffer[idx];
+                return true;
             }
         };
 

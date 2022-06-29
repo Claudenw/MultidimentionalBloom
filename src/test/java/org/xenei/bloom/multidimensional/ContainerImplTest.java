@@ -26,13 +26,14 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.LongConsumer;
+import java.util.function.LongPredicate;
 
 import org.apache.commons.codec.digest.MurmurHash3;
 import org.apache.commons.collections4.bloomfilter.BitMapProducer;
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
-import org.apache.commons.collections4.bloomfilter.hasher.Hasher;
-import org.apache.commons.collections4.bloomfilter.hasher.HasherCollection;
-import org.apache.commons.collections4.bloomfilter.hasher.SimpleHasher;
+import org.apache.commons.collections4.bloomfilter.Hasher;
+import org.apache.commons.collections4.bloomfilter.HasherCollection;
+import org.apache.commons.collections4.bloomfilter.SimpleHasher;
 import org.apache.commons.collections4.bloomfilter.Shape;
 import org.junit.Test;
 import org.xenei.bloom.multidimensional.Container.Index;
@@ -41,7 +42,7 @@ import org.xenei.bloom.multidimensional.index.FlatBloofi;
 import org.xenei.bloom.multidimensional.storage.InMemory;
 
 public class ContainerImplTest {
-    Shape shape = org.apache.commons.collections4.bloomfilter.Shape.Factory.fromNP( 3, 1.0 / 3000000);
+    Shape shape = org.apache.commons.collections4.bloomfilter.Shape.fromNP( 3, 1.0 / 3000000);
     Func func = new Func(shape);
     Storage<String,UUID> storage = new InMemory<String,UUID>();
     Index<UUID> index = new FlatBloofi<UUID>(func,shape);
@@ -155,16 +156,17 @@ public class ContainerImplTest {
         {
             byte[] buffer = new byte[numberOfBytes];
 
-            bitMapProducer.forEachBitMap( new LongConsumer() {
+            bitMapProducer.forEachBitMap( new LongPredicate() {
             int idx = 0;
             @Override
-            public void accept(long word) {
+            public boolean test(long word) {
                 for (int longOfs=0;longOfs<Long.BYTES;longOfs++) {
                     buffer[idx++] = (byte) ((word>>(Byte.SIZE * longOfs))  & 0xFFL);
                     if (idx == numberOfBytes) {
-                        return;
+                        return true;
                     }
                 }
+                return true;
             }
 
             });

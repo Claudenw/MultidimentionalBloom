@@ -17,20 +17,16 @@
  */
 package org.xenei.bloom.filter;
 
-import java.nio.LongBuffer;
-import java.util.BitSet;
-import java.util.PrimitiveIterator.OfInt;
-import java.util.function.IntConsumer;
-import java.util.function.LongConsumer;
+import java.util.Iterator;
+import java.util.function.IntPredicate;
+import java.util.function.LongPredicate;
 
 import org.apache.commons.collections4.bloomfilter.BitMapProducer;
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.IndexProducer;
-import org.apache.commons.collections4.bloomfilter.hasher.Hasher;
+import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.apache.commons.collections4.bloomfilter.Shape;
-import org.apache.commons.collections4.bloomfilter.exceptions.NoMatchException;
 
-import com.googlecode.javaewah.ChunkIterator;
 import com.googlecode.javaewah.EWAHCompressedBitmap;
 
 /**
@@ -59,8 +55,9 @@ public class EWAHBloomFilter implements BloomFilter {
      */
     public EWAHBloomFilter(Shape shape, Hasher hasher) {
         this(shape);
-        hasher.indices(shape).forEachIndex((IntConsumer) bitSet::set);
+        hasher.indices(shape).forEachIndex( bitSet::set);
     }
+
 
     /**
      * Constructors an empty filter with the prescribed shape.
@@ -68,8 +65,23 @@ public class EWAHBloomFilter implements BloomFilter {
      * @param shape The BloomFilter.Shape to define this BloomFilter.
      */
     public EWAHBloomFilter(Shape shape) {
+        this(shape, new EWAHCompressedBitmap());
+    }
+
+
+    /**
+     * Constructors an empty filter with the prescribed shape.
+     *
+     * @param shape The BloomFilter.Shape to define this BloomFilter.
+     */
+    private EWAHBloomFilter(Shape shape, EWAHCompressedBitmap bitSet) {
         this.shape = shape;
-        this.bitSet = new EWAHCompressedBitmap();
+        this.bitSet = bitSet;
+    }
+
+    @Override
+    public EWAHBloomFilter copy() {
+        return new EWAHBloomFilter( this.shape, this.bitSet );
     }
 
     @Override
@@ -83,13 +95,19 @@ public class EWAHBloomFilter implements BloomFilter {
     }
 
     @Override
-    public void forEachIndex(IntConsumer consumer) {
-        bitSet.iterator().forEachRemaining( x -> consumer.accept(x));
+    public boolean forEachIndex(IntPredicate consumer) {
+        Iterator<Integer> iter = bitSet.iterator();
+        while (iter.hasNext()) {
+            if (! consumer.test( iter.next())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
-    public void forEachBitMap(LongConsumer consumer) {
-        BitMapProducer.fromIndexProducer( this, shape).forEachBitMap(consumer);
+    public boolean forEachBitMap(LongPredicate consumer) {
+        return BitMapProducer.fromIndexProducer( this, shape.getNumberOfBits() ).forEachBitMap(consumer);
     }
 
     @Override
@@ -105,7 +123,7 @@ public class EWAHBloomFilter implements BloomFilter {
     @Override
     public boolean contains(IndexProducer indexProducer) {
         EWAHCompressedBitmap producerBitSet = new EWAHCompressedBitmap();
-        indexProducer.forEachIndex((IntConsumer) producerBitSet::set);
+        indexProducer.forEachIndex( producerBitSet::set);
         return bitSet.andCardinality(producerBitSet) == producerBitSet.cardinality();
     }
 
@@ -123,5 +141,7 @@ public class EWAHBloomFilter implements BloomFilter {
         }
         return true;
     }
+
+
 
 }

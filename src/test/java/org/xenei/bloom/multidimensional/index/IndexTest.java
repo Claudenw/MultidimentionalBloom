@@ -27,9 +27,9 @@ import java.util.UUID;
 
 
 import org.apache.commons.collections4.bloomfilter.Shape;
-import org.apache.commons.collections4.bloomfilter.hasher.Hasher;
-import org.apache.commons.collections4.bloomfilter.hasher.HasherCollection;
-import org.apache.commons.collections4.bloomfilter.hasher.SimpleHasher;
+import org.apache.commons.collections4.bloomfilter.Hasher;
+import org.apache.commons.collections4.bloomfilter.HasherCollection;
+import org.apache.commons.collections4.bloomfilter.SimpleHasher;
 import org.junit.After;
 import org.junit.Before;
 import org.xenei.bloom.multidimensional.Container;
@@ -43,7 +43,7 @@ import org.xenei.junit.contract.Contract.Inject;
 public class IndexTest {
 
     public final static int N = 10000;
-    public final static Shape SHAPE = Shape.Factory.fromNP(3, 1.0 / N);
+    public final static Shape SHAPE = Shape.fromNP(3, 1.0 / N);
     IProducer<Index<UUID>> producer;
     Index<UUID> index;
 
@@ -107,20 +107,17 @@ public class IndexTest {
         UUID idx3 = index.put( hasher3 );
         UUID idx4 = index.put( hasher4 );
 
-        Hasher search = new SimpleHasher( 10, 0 );
+        Hasher search = new FixedHasher( 10);
         Set<UUID> result = index.search(search);
         assertEquals(1, result.size());
         assertEquals(idx1, result.iterator().next());
 
-        search = new SimpleHasher( 12, 0 );
+        search = new FixedHasher( 12 );
         result = index.search(search);
         assertEquals(3, result.size());
         assertTrue(result.contains(idx1));
         assertTrue(result.contains(idx2));
         assertTrue(result.contains(idx3));
-
-
-
     }
 
 }

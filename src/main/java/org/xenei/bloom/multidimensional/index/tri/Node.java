@@ -17,8 +17,6 @@
  */
 package org.xenei.bloom.multidimensional.index.tri;
 
-import org.apache.commons.collections4.bloomfilter.BloomFilter;
-
 /**
  * The shared definition of a Node in the Trie.*
  */

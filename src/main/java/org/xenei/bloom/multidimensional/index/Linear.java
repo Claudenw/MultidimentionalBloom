@@ -26,7 +26,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.apache.commons.collections4.bloomfilter.hasher.Hasher;
+import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.apache.commons.collections4.bloomfilter.BitMapProducer;
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.Shape;
@@ -78,12 +78,8 @@ public class Linear<I> implements Index<I> {
                     return 1;
                 }
             }
-            BitMapProducer.ArrayBuilder builder = new BitMapProducer.ArrayBuilder( filter1.getShape());
-            filter1.forEachBitMap( builder );
-            long[] num1 = builder.getArray();
-            builder = new BitMapProducer.ArrayBuilder( filter2.getShape());
-            filter2.forEachBitMap( builder );
-            long[] num2 = builder.getArray();
+            long[] num1 = filter1.asBitMapArray();
+            long[] num2 = filter2.asBitMapArray();
             int limit = Integer.min(num1.length, num2.length);
             for (int i = 0; i < limit; i++) {
                 int result = Long.compare(num1[i], num2[i]);

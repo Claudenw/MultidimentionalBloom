@@ -27,9 +27,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
-import org.apache.commons.collections4.bloomfilter.hasher.Hasher;
+import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.apache.commons.collections4.bloomfilter.BitMapProducer;
-import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.Shape;
 import org.xenei.bloom.filter.EWAHBloomFilter;
 import org.xenei.bloom.multidimensional.Container.Index;
@@ -165,9 +164,7 @@ public class BlockedSetIndex<I> implements Index<I> {
                 }
             }
 
-            BitMapProducer.ArrayBuilder builder = new BitMapProducer.ArrayBuilder( shape );
-            filter.forEachBitMap( builder );
-            long[] bitMap = builder.getArray();
+            long[] bitMap = filter.asBitMapArray();
             for (int longIdx=0;longIdx<bitMap.length;longIdx++)
             {
                 int limit = Integer.min( Long.BYTES*(longIdx+1), numberOfBytes(shape));
@@ -252,10 +249,8 @@ public class BlockedSetIndex<I> implements Index<I> {
 
     @Override
     public Set<I> search(Hasher hasher) {
-        EWAHBloomFilter filter = new EWAHBloomFilter( shape, hasher );
-        BitMapProducer.ArrayBuilder builder = new BitMapProducer.ArrayBuilder( shape );
-        filter.forEachBitMap( builder );
-        long[] bitMap = builder.getArray();
+
+        long[] bitMap = BitMapProducer.fromIndexProducer( hasher.indices( shape ), shape.getNumberOfBits() ).asBitMapArray();
         BitSet answer = null;
         for (int longIdx=0;longIdx<bitMap.length;longIdx++)
         {

@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.function.Function;
 
 import org.apache.commons.collections4.bloomfilter.BitMapProducer;
-import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.Shape;
 import org.xenei.bloom.multidimensional.index.tri.Trie;
 

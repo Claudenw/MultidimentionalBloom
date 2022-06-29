@@ -25,7 +25,7 @@ import org.apache.commons.collections4.iterators.LazyIteratorChain;
 import org.apache.commons.collections4.iterators.UnmodifiableIterator;
 import org.xenei.bloom.filter.EWAHBloomFilter;
 import org.apache.commons.collections4.bloomfilter.ArrayCountingBloomFilter;
-import org.apache.commons.collections4.bloomfilter.hasher.Hasher;
+import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.apache.commons.collections4.bloomfilter.Shape;
 import org.apache.commons.collections4.bloomfilter.CountingBloomFilter;
 
@@ -76,7 +76,7 @@ public class ContainerImpl<E,I> implements Container<E> {
         this.storage = storage;
         this.index = index;
         this.valueCount = 0;
-        Shape gateShape = Shape.Factory.fromNP( estimatedPopulation, shape.getProbability(1));
+        Shape gateShape = Shape.fromNP( estimatedPopulation, shape.getProbability(1));
         gate = new ArrayCountingBloomFilter(gateShape);
     }
 
@@ -135,7 +135,10 @@ public class ContainerImpl<E,I> implements Container<E> {
 
     @Override
     public Iterator<E> search(Hasher hasher) {
-        if (hasher.isEmpty())
+        boolean[] hasItem = new boolean[1];
+        hasher.indices( gate.getShape() ).forEachIndex( i -> {hasItem[0]=true;return false;} );
+
+        if (!hasItem[0])
         {
             Iterator<I> iter = index.getAll().iterator();
             // we are searching for all the items.
