@@ -25,8 +25,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.apache.commons.collections4.bloomfilter.Shape;
+import org.xenei.bloom.filter.HasherCollection;
 
 /**
  * A container that implements multidimensional Bloom filter storage.
@@ -62,15 +62,15 @@ public interface Container<E> {
      * @param hasher the filter to match.
      * @return a stream of stored objects
      */
-    Iterator<E> get(Hasher hasher);
+    Iterator<E> get(HasherCollection hashers);
 
     /**
      * Puts an object into the container.
      *
      * @param hasher a Hasher that generates hash values for the value.
-     * @param value  the value to store.
+     * @param value the value to store.
      */
-    void put(Hasher hasher, E value);
+    void put(HasherCollection hasher, E value);
 
     /**
      * Removes an object into the container. Only stored values that have a Bloom
@@ -78,19 +78,19 @@ public interface Container<E> {
      * the hasher will be removed.
      *
      * @param hasher a Hasher that generates hash values for the value.
-     * @param value  the value to remove.
+     * @param value the value to remove.
      */
-    void remove(Hasher hasher, E value);
+    void remove(HasherCollection hasher, E value);
 
     /**
      * Searches the container for matching objects.
      *
-     * @param hasher the Hasher that generates hash values to create the Bloom
-     *               filter to locate the values with.
+     * @param hashers the Hashers that generates hash values to create the Bloom
+     * filter to locate the values with.
      * @return an iterator of stored objects that match the Bloom filter created by
-     *         the hasher.
+     * the hasher.
      */
-    Iterator<E> search(Hasher hasher);
+    Iterator<E> search(HasherCollection hashers);
 
     /**
      * A static method to create an empty stream.
@@ -112,6 +112,7 @@ public interface Container<E> {
 
         /**
          * Gets the shape of the index
+         * 
          * @return the Shape of this index.
          */
         Shape getShape();
@@ -122,7 +123,7 @@ public interface Container<E> {
          * @param hasher the hasher to match
          * @return the index that matches the filter.
          */
-        Optional<I> get(Hasher hasher);
+        Optional<I> get(HasherCollection hasher);
 
         /**
          * Puts the bloom filter into the index.
@@ -131,7 +132,7 @@ public interface Container<E> {
          * @param hasher the hasher to add
          * @return the index of the storage collection.
          */
-        I put( Hasher hasher);
+        I put(HasherCollection hasher);
 
         /**
          * Removes the filter at the storage index from the index.
@@ -146,28 +147,21 @@ public interface Container<E> {
          * @param hasher the hasher to search for.
          * @return the set of storage indexes.
          */
-        Set<I> search(Hasher hasher);
+        Set<I> search(HasherCollection hasher);
 
         /**
          * Gets all the indexes.
+         * 
          * @return The set of storage indexes
          */
         Set<I> getAll();
 
         /**
          * Gets the number of filters indexed in the system.
+         * 
          * @return The number of filters indexed in the system.
          */
         int getFilterCount();
-//
-//        /**
-//         * Creates the index value from the hasher.
-//         * If the hasher exists it in the index it must return the index that the hasher is
-//         * currently using, otherwise return a new index.
-//         * @param hasher the hasher to process
-//         * @return the index value.
-//         */
-//        I create(Hasher hasher);
     }
 
     /**
@@ -198,7 +192,7 @@ public interface Container<E> {
         /**
          * Puts an object in the collection at the storage index.
          *
-         * @param idx   the storage index.
+         * @param idx the storage index.
          * @param value the value to put in the collection.
          */
         void put(I idx, E value);
@@ -206,10 +200,10 @@ public interface Container<E> {
         /**
          * Removes a value from the collection at the storage index
          *
-         * @param idx   the index from which to remove the value.
+         * @param idx the index from which to remove the value.
          * @param value the value to remove
          * @return first value true if the item was removed, second true if the storage
-         *         index is empty after the removal.
+         * index is empty after the removal.
          */
         boolean[] remove(I idx, E value);
 
@@ -221,6 +215,5 @@ public interface Container<E> {
          */
         Iterator<Map.Entry<I, List<E>>> list();
     }
-
 
 }

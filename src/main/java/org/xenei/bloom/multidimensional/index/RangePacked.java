@@ -27,10 +27,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import org.apache.commons.collections4.bloomfilter.Hasher;
+
 import org.apache.commons.collections4.bloomfilter.BitMapProducer;
+import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.Shape;
-import org.apache.commons.collections4.bloomfilter.SimpleBloomFilter;
+import org.xenei.bloom.filter.HasherCollection;
 import org.xenei.bloom.multidimensional.Container.Index;
 
 import com.googlecode.javaewah.datastructure.BitSet;
@@ -52,9 +53,9 @@ public final class RangePacked<I> implements Index<I> {
     private final Shape shape;
 
     /**
-     * A list of buffers, one for each bit in the filter. Each entry in the buffer is
-     * a bitset comprising the integer indexes for each filter that has that particular
-     * bit enabled.
+     * A list of buffers, one for each bit in the filter. Each entry in the buffer
+     * is a bitset comprising the integer indexes for each filter that has that
+     * particular bit enabled.
      */
     private BitSet[] buffer;
 
@@ -118,26 +119,31 @@ public final class RangePacked<I> implements Index<I> {
     /**
      * Using the hasher set the bits for a bloom filter.
      *
-     * @param idx    the index of the bloom filter in the busy set.
-     * @param hasher the hasher to generate the bits to turn on.
+     * @param idx the index of the bloom filter in the busy set.
+     * @param filter the filter that contains the bits to turn on.
      */
-    private void setBloomAt(int idx, Hasher hasher) {
+    private void setBloomAt(int idx, BloomFilter filter) {
         busy.set(idx);
         int buffSize = Long.SIZE * (1 + (idx / Long.SIZE));
-        hasher.indices(shape).forEachIndex(buffIdx -> setBuffer(buffSize, buffIdx, idx));
+        filter.forEachIndex(buffIdx -> setBuffer(buffSize, buffIdx, idx));
     }
 
     @Override
-    public Optional<I> get(Hasher hasher) {
-        I result = func.apply(new SimpleBloomFilter(shape, hasher));
+    public Optional<I> get(HasherCollection hashers) {
+        return get(hashers.filterFor(shape));
+    }
+
+    private Optional<I> get(BloomFilter filter) {
+        I result = func.apply(filter);
         return values.indexOf(result) == -1 ? Optional.empty() : Optional.of(result);
     }
 
     @Override
-    public I put(Hasher hasher) {
-        Optional<I> result = get(hasher);
+    public I put(HasherCollection hashers) {
+        BloomFilter filter = hashers.filterFor(shape);
+        Optional<I> result = get(filter);
         if (!result.isPresent()) {
-            I idx = func.apply(new SimpleBloomFilter(shape, hasher));
+            I idx = func.apply(filter);
             Integer i = valueToIdx.get(idx);
             if (i == null) {
                 int index = busy.nextUnsetBit(0);
@@ -146,7 +152,7 @@ public final class RangePacked<I> implements Index<I> {
                     index = busy.size();
                     busy.resize(index + Long.SIZE);
                 }
-                setBloomAt(index, hasher);
+                setBloomAt(index, filter);
                 register(idx, index);
             }
             result = Optional.of(idx);
@@ -173,10 +179,12 @@ public final class RangePacked<I> implements Index<I> {
     }
 
     @Override
-    public Set<I> search(Hasher hasher) {
+    public Set<I> search(HasherCollection hashers) {
         BitSet answer = new BitSet(busy.size());
         answer.or(busy);
-        if (!hasher.indices(shape).forEachIndex(buffIdx -> {
+
+        BloomFilter filter = hashers.filterFor(shape);
+        if (!filter.forEachIndex(buffIdx -> {
             if (buffer[buffIdx] == null) {
                 return false;
             }

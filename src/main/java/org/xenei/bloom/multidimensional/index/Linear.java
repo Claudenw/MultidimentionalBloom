@@ -26,19 +26,19 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.apache.commons.collections4.bloomfilter.BitMapProducer;
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
 import org.apache.commons.collections4.bloomfilter.Shape;
-import org.xenei.bloom.filter.EWAHBloomFilter;
+import org.xenei.bloom.filter.HasherCollection;
 import org.xenei.bloom.multidimensional.Container.Index;
 
 /**
  * A linear implementation of an index.
  * <p>
- * This implementation is adequate for smallish populations.  Large populations with
- * high collision rates will see significant performance degredation.
+ * This implementation is adequate for smallish populations. Large populations
+ * with high collision rates will see significant performance degredation.
  * </p>
+ * 
  * @param <I> The index type
  */
 public class Linear<I> implements Index<I> {
@@ -49,15 +49,16 @@ public class Linear<I> implements Index<I> {
     /**
      * The list of bloom filters.
      */
-    private Map<I,BloomFilter> data;
+    private Map<I, BloomFilter> data;
 
     /**
      * Function to convert BloomFilter to index.
      */
-    private final Function<BitMapProducer,I> func;
+    private final Function<BitMapProducer, I> func;
 
     /**
-     * A comparator for bloom filters to determine if they are bit for bit identical.
+     * A comparator for bloom filters to determine if they are bit for bit
+     * identical.
      */
     private static Comparator<BloomFilter> comp = new Comparator<BloomFilter>() {
         /**
@@ -73,10 +74,9 @@ public class Linear<I> implements Index<I> {
         public int compare(BloomFilter filter1, BloomFilter filter2) {
             if (filter1 == null) {
                 return filter2 == null ? 0 : -1;
-            } else {
-                if (filter2 == null) {
-                    return 1;
-                }
+            }
+            if (filter2 == null) {
+                return 1;
             }
             long[] num1 = filter1.asBitMapArray();
             long[] num2 = filter2.asBitMapArray();
@@ -93,29 +93,30 @@ public class Linear<I> implements Index<I> {
 
     /**
      * Constructs the Linear index.
+     * 
      * @param func The function to convert bloom filter to index object.
      * @param estimatedPopulation the estimated number of Bloom filters to index.
      * @param shape the shape of the bloom filters.
      */
-    public Linear(Function<BitMapProducer,I> func, int estimatedPopulation, Shape shape) {
+    public Linear(Function<BitMapProducer, I> func, int estimatedPopulation, Shape shape) {
         this.shape = shape;
         this.func = func;
-        data = new HashMap<I,BloomFilter>(estimatedPopulation);
+        data = new HashMap<I, BloomFilter>(estimatedPopulation);
     }
 
     @Override
-    public Optional<I> get(Hasher hasher) {
-        BloomFilter bf = new EWAHBloomFilter(shape,hasher);
-        return data.entrySet().stream()
-                .filter( entry -> {return comp.compare(entry.getValue(), bf) == 0;})
-                .map( Map.Entry::getKey ).findFirst();
+    public Optional<I> get(HasherCollection hashers) {
+        BloomFilter bf = hashers.filterFor(shape);
+        return data.entrySet().stream().filter(entry -> {
+            return comp.compare(entry.getValue(), bf) == 0;
+        }).map(Map.Entry::getKey).findFirst();
     }
 
     @Override
-    public I put( Hasher hasher) {
-        BloomFilter filter = new EWAHBloomFilter(shape, hasher);
+    public I put(HasherCollection hashers) {
+        BloomFilter filter = hashers.filterFor(shape);
         I result = func.apply(filter);
-        data.put( result, filter);
+        data.put(result, filter);
         return result;
     }
 
@@ -125,13 +126,12 @@ public class Linear<I> implements Index<I> {
     }
 
     @Override
-    public Set<I> search(Hasher hasher) {
-        BloomFilter bf = new EWAHBloomFilter(shape, hasher);
-        return data.entrySet().stream()
-                .filter( entry -> {return entry.getValue().contains(bf);})
-                .map( Map.Entry::getKey ).collect( Collectors.toSet() );
+    public Set<I> search(HasherCollection hashers) {
+        BloomFilter bf = hashers.filterFor(shape);
+        return data.entrySet().stream().filter(entry -> {
+            return entry.getValue().contains(bf);
+        }).map(Map.Entry::getKey).collect(Collectors.toSet());
     }
-
 
     @Override
     public int getFilterCount() {
@@ -145,7 +145,7 @@ public class Linear<I> implements Index<I> {
 
     @Override
     public Set<I> getAll() {
-        return new HashSet<I>( data.keySet() );
+        return new HashSet<I>(data.keySet());
     }
 
 }

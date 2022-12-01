@@ -21,13 +21,13 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.Optional;
 
+import org.apache.commons.collections4.bloomfilter.ArrayCountingBloomFilter;
+import org.apache.commons.collections4.bloomfilter.BloomFilter;
+import org.apache.commons.collections4.bloomfilter.CountingBloomFilter;
+import org.apache.commons.collections4.bloomfilter.Shape;
 import org.apache.commons.collections4.iterators.LazyIteratorChain;
 import org.apache.commons.collections4.iterators.UnmodifiableIterator;
-import org.xenei.bloom.filter.EWAHBloomFilter;
-import org.apache.commons.collections4.bloomfilter.ArrayCountingBloomFilter;
-import org.apache.commons.collections4.bloomfilter.Hasher;
-import org.apache.commons.collections4.bloomfilter.Shape;
-import org.apache.commons.collections4.bloomfilter.CountingBloomFilter;
+import org.xenei.bloom.filter.HasherCollection;
 
 /**
  * An implementation of a Multidimensional Bloom filter.
@@ -35,11 +35,11 @@ import org.apache.commons.collections4.bloomfilter.CountingBloomFilter;
  * @param <E> The type of object to be stored.
  * @param <I> The type of object used for the index.
  */
-public class ContainerImpl<E,I> implements Container<E> {
+public class ContainerImpl<E, I> implements Container<E> {
     /**
      * The storage for the objects.
      */
-    private Storage<E,I> storage;
+    private Storage<E, I> storage;
     /**
      * The shape of the Blom filters in the container.
      */
@@ -61,22 +61,23 @@ public class ContainerImpl<E,I> implements Container<E> {
     /**
      * Constructs a Container.
      * <p>
-     * This Container implementation is sensitive to the estimated population.  The
-     * estimated population is used to create a Bloom filter that gates the index. If
-     * the estimated population is too small additional overhead is consumed when putting
-     * objects into the container as additional searches are performed.
+     * This Container implementation is sensitive to the estimated population. The
+     * estimated population is used to create a Bloom filter that gates the index.
+     * If the estimated population is too small additional overhead is consumed when
+     * putting objects into the container as additional searches are performed.
      * </p>
+     * 
      * @param estimatedPopulation the estimated number of objects in the container.
      * @param shape the shape of the Bloom filter.
      * @param storage the storage for the objects
      * @param index the index for the bloom filter.
      */
-    public ContainerImpl(int estimatedPopulation, Shape shape, Storage<E,I> storage, Index<I> index) {
+    public ContainerImpl(int estimatedPopulation, Shape shape, Storage<E, I> storage, Index<I> index) {
         this.shape = shape;
         this.storage = storage;
         this.index = index;
         this.valueCount = 0;
-        Shape gateShape = Shape.fromNP( estimatedPopulation, shape.getProbability(1));
+        Shape gateShape = Shape.fromNP(estimatedPopulation, shape.getProbability(1));
         gate = new ArrayCountingBloomFilter(gateShape);
     }
 
@@ -96,9 +97,9 @@ public class ContainerImpl<E,I> implements Container<E> {
     }
 
     @Override
-    public Iterator<E> get(Hasher hasher) {
-        if (gate.contains(hasher)) {
-            Optional<I> idx = index.get(hasher);
+    public Iterator<E> get(HasherCollection hashers) {
+        if (gate.contains(hashers.filterFor(gate.getShape()))) {
+            Optional<I> idx = index.get(hashers);
             if (idx.isPresent()) {
                 return getEntryIterator(idx.get());
             }
@@ -107,22 +108,21 @@ public class ContainerImpl<E,I> implements Container<E> {
     }
 
     @Override
-    public void put(Hasher hasher, E value) {
-        gate.mergeInPlace(hasher);
-        I idx = index.put( hasher );
-        storage.put( idx, value);
+    public void put(HasherCollection hashers, E value) {
+        gate.merge(hashers.filterFor(gate.getShape()));
+        I idx = index.put(hashers);
+        storage.put(idx, value);
         valueCount++;
     }
 
     @Override
-    public void remove(Hasher hasher, E value) {
-        if (gate.contains(hasher)) {
-            Optional<I> idx = index.get(hasher);
+    public void remove(HasherCollection hashers, E value) {
+        BloomFilter gateFilter = hashers.filterFor(gate.getShape());
+        if (gate.contains(gateFilter)) {
+            Optional<I> idx = index.get(hashers);
             if (idx.isPresent()) {
-
                 boolean[] result = storage.remove(idx.get(), value);
                 if (result[Storage.REMOVED]) {
-                    EWAHBloomFilter gateFilter = new EWAHBloomFilter( gate.getShape(), hasher);
                     valueCount--;
                     gate.remove(gateFilter);
                     if (result[Storage.EMPTY]) {
@@ -134,12 +134,9 @@ public class ContainerImpl<E,I> implements Container<E> {
     }
 
     @Override
-    public Iterator<E> search(Hasher hasher) {
-        boolean[] hasItem = new boolean[1];
-        hasher.indices( gate.getShape() ).forEachIndex( i -> {hasItem[0]=true;return false;} );
-
-        if (!hasItem[0])
-        {
+    public Iterator<E> search(HasherCollection hashers) {
+        if (hashers.isEmpty()) {
+            // we are searching for all the items
             Iterator<I> iter = index.getAll().iterator();
             // we are searching for all the items.
             return new LazyIteratorChain<E>() {
@@ -148,10 +145,8 @@ public class ContainerImpl<E,I> implements Container<E> {
                     return iter.hasNext() ? getEntryIterator(iter.next()) : null;
                 }
             };
-
-        }
-        if (gate.contains(hasher)) {
-            Iterator<I> iter = index.search(hasher).iterator();
+        } else if (gate.contains(hashers.filterFor(gate.getShape()))) {
+            Iterator<I> iter = index.search(hashers).iterator();
             return new LazyIteratorChain<E>() {
                 @Override
                 protected Iterator<E> nextIterator(int count) {
@@ -160,10 +155,9 @@ public class ContainerImpl<E,I> implements Container<E> {
             };
         }
         return Collections.emptyListIterator();
-
     }
 
-    private Iterator<E> getEntryIterator( I index ) {
+    private Iterator<E> getEntryIterator(I index) {
         return UnmodifiableIterator.unmodifiableIterator(storage.get(index).iterator());
     }
 

@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
 import org.apache.commons.collections4.Transformer;
 import org.apache.commons.collections4.iterators.TransformIterator;
 import org.apache.ignite.cache.query.QueryCursor;
@@ -34,7 +35,7 @@ import org.apache.ignite.client.ClientCache;
 import org.apache.ignite.client.IgniteClient;
 import org.xenei.bloom.multidimensional.Container.Storage;
 
-public class IgniteStorage<E> implements Storage<E,UUID> {
+public class IgniteStorage<E> implements Storage<E, UUID> {
 
     private static final String CACHE_NAME = "IgniteStorage";
     private Serde<E> serde;
@@ -51,18 +52,17 @@ public class IgniteStorage<E> implements Storage<E,UUID> {
         if (cachedVal == null) {
             return Collections.emptyList();
         }
-        return cachedVal.stream().map( serde::deserialize ).collect( Collectors.toList() );
+        return cachedVal.stream().map(serde::deserialize).collect(Collectors.toList());
     }
 
     @Override
     public void put(UUID idx, E value) {
         List<byte[]> cachedVal = cache.get(idx);
-        if (cachedVal == null)
-        {
+        if (cachedVal == null) {
             cachedVal = new ArrayList<byte[]>();
         }
-        cachedVal.add( serde.serialize( value ));
-        cache.getAndPut( idx,  cachedVal );
+        cachedVal.add(serde.serialize(value));
+        cache.getAndPut(idx, cachedVal);
     }
 
     @Override
@@ -72,7 +72,7 @@ public class IgniteStorage<E> implements Storage<E,UUID> {
         result[EMPTY] = false;
         List<byte[]> lst = cache.get(idx);
         if (lst != null) {
-            result[REMOVED] = lst.remove( serde.serialize(value));
+            result[REMOVED] = lst.remove(serde.serialize(value));
             if (lst.isEmpty()) {
                 cache.remove(idx);
                 result[EMPTY] = true;
@@ -89,27 +89,27 @@ public class IgniteStorage<E> implements Storage<E,UUID> {
     public Iterator<Map.Entry<UUID, List<E>>> list() {
         ScanQuery<UUID, List<byte[]>> scan = new ScanQuery<UUID, List<byte[]>>();
         QueryCursor<javax.cache.Cache.Entry<UUID, List<byte[]>>> cursor = cache.query(scan);
-        return new TransformIterator<javax.cache.Cache.Entry<UUID, List<byte[]>>,Map.Entry<UUID, List<E>>>( cursor.iterator(), new Transformer
-                <javax.cache.Cache.Entry<UUID, List<byte[]>>,
-                Map.Entry<UUID, List<E>>>(){
+        return new TransformIterator<javax.cache.Cache.Entry<UUID, List<byte[]>>, Map.Entry<UUID, List<E>>>(
+                cursor.iterator(),
+                new Transformer<javax.cache.Cache.Entry<UUID, List<byte[]>>, Map.Entry<UUID, List<E>>>() {
 
-            @Override
-            public Entry<UUID, List<E>> transform(
-                    javax.cache.Cache.Entry<UUID, List<byte[]>> input) {
-                return new Converter(input);
-            }});
+                    @Override
+                    public Entry<UUID, List<E>> transform(javax.cache.Cache.Entry<UUID, List<byte[]>> input) {
+                        return new Converter(input);
+                    }
+                });
     }
 
-
     /**
-     * Converts a javax.cache.Cache.Entry<UUID, List<byte[]>> to a Map.Entry<UUID, List<E>>.
+     * Converts a javax.cache.Cache.Entry<UUID, List<byte[]>> to a Map.Entry<UUID,
+     * List<E>>.
      *
      */
     class Converter implements Map.Entry<UUID, List<E>> {
 
         private javax.cache.Cache.Entry<UUID, List<byte[]>> ce;
 
-        Converter( javax.cache.Cache.Entry<UUID, List<byte[]>> ce ) {
+        Converter(javax.cache.Cache.Entry<UUID, List<byte[]>> ce) {
             this.ce = ce;
         }
 
@@ -120,7 +120,7 @@ public class IgniteStorage<E> implements Storage<E,UUID> {
 
         @Override
         public List<E> getValue() {
-            return ce.getValue().stream().map( serde::deserialize ).collect( Collectors.toList() );
+            return ce.getValue().stream().map(serde::deserialize).collect(Collectors.toList());
         }
 
         @Override

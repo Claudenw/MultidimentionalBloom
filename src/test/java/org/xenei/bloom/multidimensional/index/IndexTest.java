@@ -25,19 +25,18 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-
-import org.apache.commons.collections4.bloomfilter.Shape;
+import org.apache.commons.collections4.bloomfilter.EnhancedDoubleHasher;
 import org.apache.commons.collections4.bloomfilter.Hasher;
-import org.apache.commons.collections4.bloomfilter.HasherCollection;
-import org.apache.commons.collections4.bloomfilter.SimpleHasher;
+import org.apache.commons.collections4.bloomfilter.Shape;
 import org.junit.After;
 import org.junit.Before;
+import org.xenei.bloom.filter.HasherCollection;
 import org.xenei.bloom.multidimensional.Container;
 import org.xenei.bloom.multidimensional.Container.Index;
 import org.xenei.junit.contract.Contract;
+import org.xenei.junit.contract.Contract.Inject;
 import org.xenei.junit.contract.ContractTest;
 import org.xenei.junit.contract.IProducer;
-import org.xenei.junit.contract.Contract.Inject;
 
 @Contract(Container.Index.class)
 public class IndexTest {
@@ -64,60 +63,84 @@ public class IndexTest {
 
     @ContractTest
     public void getTest() {
-        UUID idx = index.put( new SimpleHasher( 29, 3 ));
-        Optional<UUID> opt = index.get(new SimpleHasher( 29, 3 ));
-        assertTrue( opt.isPresent() );
-        assertEquals(idx, opt.get() );
+        HasherCollection hashers = new HasherCollection();
+        hashers.add(new EnhancedDoubleHasher(29, 3));
+        UUID idx = index.put(hashers);
+        hashers.clear();
+        hashers.add(new EnhancedDoubleHasher(29, 3));
+        Optional<UUID> opt = index.get(hashers);
+        assertTrue(opt.isPresent());
+        assertEquals(idx, opt.get());
     }
 
     @ContractTest
     public void getTest_NotFound() {
-        Hasher hasher1 = new SimpleHasher( 29, 3 );
-        assertFalse(index.get(hasher1).isPresent());
+        HasherCollection hashers = new HasherCollection();
+        hashers.add(new EnhancedDoubleHasher(29, 3));
+        assertFalse(index.get(hashers).isPresent());
     }
 
     @ContractTest
     public void getTest_PartialMatch() {
-        Hasher hasher1 = new SimpleHasher( 29, 3 );
-        Hasher hasher2 = new HasherCollection( hasher1, new SimpleHasher( 13,3));
-        index.put( hasher1);
-        assertFalse(index.get(hasher2).isPresent());
+        HasherCollection hashers = new HasherCollection();
+        Hasher hasher1 = new EnhancedDoubleHasher(29, 3);
+        hashers.add(hasher1);
+        index.put(hashers);
+        hashers.add(new EnhancedDoubleHasher(13, 3));
+        assertFalse(index.get(hashers).isPresent());
     }
 
     @ContractTest
     public void removeTest() {
-        UUID idx = index.put( new SimpleHasher( 29, 3 ));
-        Optional<UUID> opt = index.get(new SimpleHasher( 29, 3 ));
-        assertTrue( opt.isPresent() );
+        HasherCollection hashers = new HasherCollection();
+        Hasher hasher1 = new EnhancedDoubleHasher(29, 3);
+        hashers.add(hasher1);
+        UUID idx = index.put(hashers);
+        Optional<UUID> opt = index.get(hashers);
+        assertTrue(opt.isPresent());
         assertEquals(idx, opt.get());
         index.remove(idx);
-        assertFalse(index.get(new SimpleHasher( 29, 3 )).isPresent());
+        assertFalse(index.get(hashers).isPresent());
     }
 
     @ContractTest
     public void searchTest() {
-        Hasher hasher1 = new SimpleHasher( 10, 1 );
-        Hasher hasher2 = new SimpleHasher( 11, 1 );
-        Hasher hasher3 = new SimpleHasher( 12, 1 );
-        Hasher hasher4 = new SimpleHasher( 13, 1 );
+        HasherCollection hashers = new HasherCollection();
 
+        Hasher hasher1 = new EnhancedDoubleHasher(10, 1);
+        hashers.add(hasher1);
+        hashers.filterFor(index.getShape());
+        UUID idx1 = index.put(hashers);
+        hashers.clear();
 
-        UUID idx1 = index.put( hasher1 );
-        UUID idx2 = index.put( hasher2 );
-        UUID idx3 = index.put( hasher3 );
-        UUID idx4 = index.put( hasher4 );
+        Hasher hasher2 = new EnhancedDoubleHasher(11, 1);
+        hashers.add(hasher2);
+        UUID idx2 = index.put(hashers);
+        hashers.clear();
 
-        Hasher search = new FixedHasher( 10);
-        Set<UUID> result = index.search(search);
+        Hasher hasher3 = new EnhancedDoubleHasher(12, 1);
+        hashers.add(hasher3);
+        UUID idx3 = index.put(hashers);
+        hashers.clear();
+
+        Hasher hasher4 = new EnhancedDoubleHasher(13, 1);
+        hashers.add(hasher4);
+        UUID idx4 = index.put(hashers);
+        hashers.clear();
+
+        hashers.add(new FixedHasher(0));
+        Set<UUID> result = index.search(hashers);
         assertEquals(1, result.size());
         assertEquals(idx1, result.iterator().next());
+        hashers.clear();
 
-        search = new FixedHasher( 12 );
-        result = index.search(search);
+        hashers.add(new FixedHasher(10));
+        result = index.search(hashers);
         assertEquals(3, result.size());
         assertTrue(result.contains(idx1));
         assertTrue(result.contains(idx2));
         assertTrue(result.contains(idx3));
+        assertFalse(result.contains(idx4));
     }
 
 }

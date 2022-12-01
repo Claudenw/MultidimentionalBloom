@@ -23,10 +23,11 @@ package org.xenei.bloom.multidimensional.index.tri;
 public interface Node<I> {
 
     /**
-     * Adds an IndexedBloomFilter to this node.
-     * By definition this method will determine which chunk the filter belongs in on inner nodes
-     * and then add it to the inner node at that chunk.  The inner node above the leaf node will return
+     * Adds an IndexedBloomFilter to this node. By definition this method will
+     * determine which chunk the filter belongs in on inner nodes and then add it to
+     * the inner node at that chunk. The inner node above the leaf node will return
      * the leaf node to the calling method and the stack will unwind.
+     * 
      * @parma idx the index to use in the leaf.
      * @param filter the filter to add
      * @return the LeafNode where the filter was added.
@@ -35,6 +36,7 @@ public interface Node<I> {
 
     /**
      * Removes a Bloom filter from the index.
+     * 
      * @param filter the filter to remove.
      * @return true if the node is empty after the removal.
      */
@@ -42,6 +44,7 @@ public interface Node<I> {
 
     /**
      * Gets the parent node of this node.
+     * 
      * @return the parent node or {@code null} if this is the root node.
      */
     public InnerNode<I> getParent();

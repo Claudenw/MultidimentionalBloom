@@ -18,8 +18,7 @@
 package org.xenei.bloom.multidimensional.index.tri;
 
 /**
- * A leaf node in the Trie.
- * A leaf node contains a single Bloom filter index.
+ * A leaf node in the Trie. A leaf node contains a single Bloom filter index.
  *
  */
 public class LeafNode<I> implements Node<I> {
@@ -34,6 +33,7 @@ public class LeafNode<I> implements Node<I> {
 
     /**
      * Constructs a leaf node.
+     * 
      * @param idx The index of the Bloom filter.
      * @param parent the InnerNode that points to this leaf.
      */
@@ -44,6 +44,7 @@ public class LeafNode<I> implements Node<I> {
 
     /**
      * Gets the Bloom filter index.
+     * 
      * @return the Bloom filter index
      */
     public I getIdx() {
@@ -66,8 +67,8 @@ public class LeafNode<I> implements Node<I> {
     }
 
     /**
-     * Deletes this leaf node from the Trie.
-     * The deletion will cascade up and remove any unneeded inner nodes in the process.
+     * Deletes this leaf node from the Trie. The deletion will cascade up and remove
+     * any unneeded inner nodes in the process.
      */
     public void delete() {
         parent.remove(this);

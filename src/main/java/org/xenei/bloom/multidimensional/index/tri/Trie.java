@@ -31,17 +31,17 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.collections4.bloomfilter.BitMapProducer;
 import org.apache.commons.collections4.bloomfilter.BloomFilter;
-import org.apache.commons.collections4.bloomfilter.Hasher;
 import org.apache.commons.collections4.bloomfilter.Shape;
-import org.apache.commons.collections4.bloomfilter.SimpleBloomFilter;
+import org.xenei.bloom.filter.HasherCollection;
 import org.xenei.bloom.multidimensional.Container.Index;
 
 /**
  * An abstract Trie implementation.
  *
- * Bloom filters are chunked and each chunk is used to determine a leaf node where the filter is stored.
- * When searching each chunk is expanded into the matching chunks as per the Bloom filter matching
- * algorithm and all branches explored.
+ * Bloom filters are chunked and each chunk is used to determine a leaf node
+ * where the filter is stored. When searching each chunk is expanded into the
+ * matching chunks as per the Bloom filter matching algorithm and all branches
+ * explored.
  * <ul>
  * <li>m = number of bits in the bloom filter</li>
  * <li>N = number of unique filters stored in the trie.</li>
@@ -50,6 +50,7 @@ import org.xenei.bloom.multidimensional.Container.Index;
  * <li>Search costs: O( 1.5^c *m/c )
  * <li>Memory requirements: O(2^c * m/c * N)</li>
  * </ul>
+ * 
  * @param <I> The index type
  */
 public abstract class Trie<I> implements Index<I> {
@@ -78,16 +79,18 @@ public abstract class Trie<I> implements Index<I> {
     /**
      * Function to convert Hasher to index.
      */
-    private final Function<BitMapProducer,I> func;
+    private final Function<BitMapProducer, I> func;
 
     /**
      * Constructs a Trie.
-     * @param estimatedPopulation the estimated number of Bloom filters to be indexed.
+     * 
+     * @param estimatedPopulation the estimated number of Bloom filters to be
+     * indexed.
      * @param shape the shape of the contained Bloom filters.
      * @param chunkSize the size of the Trie chunks in bits.
      * @param mask the mask to extract a single chunk.
      */
-    protected Trie(Function<BitMapProducer,I> func,int estimatedPopulation, Shape shape, int chunkSize, long mask) {
+    protected Trie(Function<BitMapProducer, I> func, int estimatedPopulation, Shape shape, int chunkSize, long mask) {
         this.func = func;
         this.shape = shape;
         this.chunkSize = chunkSize;
@@ -95,10 +98,12 @@ public abstract class Trie<I> implements Index<I> {
         this.data = new HashMap<I, LeafNode<I>>(estimatedPopulation);
         root = new InnerNode<I>(0, this, null);
     }
+
     /**
-     * Returns the matching nodes for a specific level in the Trie.
-     * The concrete class will translate the chunk into all possible matching chunks.
-     * The returned values must be unique but need not be ordered.
+     * Returns the matching nodes for a specific level in the Trie. The concrete
+     * class will translate the chunk into all possible matching chunks. The
+     * returned values must be unique but need not be ordered.
+     * 
      * @param filter the filter to extract the matching nodes from.
      * @param level the level of the Trie that we are checking.
      * @return an array of all matching chunks.
@@ -107,6 +112,7 @@ public abstract class Trie<I> implements Index<I> {
 
     /**
      * Get the chunk size for this Trie.
+     * 
      * @return the chunk size for this trie.
      */
     public final int getChunkSize() {
@@ -114,19 +120,19 @@ public abstract class Trie<I> implements Index<I> {
     }
 
     @Override
-    public final I put(Hasher hasher) {
-        return put( new SimpleBloomFilter(shape,hasher) );
+    public final I put(HasherCollection hashers) {
+        return put(hashers.filterFor(shape));
     }
 
     public final I put(BloomFilter filter) {
-        return put( filter.asBitMapArray() );
+        return put(filter.asBitMapArray());
     }
 
     public final I put(long[] bitMaps) {
-        Optional<I> result = get( bitMaps );
-        if ( ! result.isPresent()) {
+        Optional<I> result = get(bitMaps);
+        if (!result.isPresent()) {
             I idx = func.apply(BitMapProducer.fromBitMapArray(bitMaps));
-            LeafNode<I> leafNode = root.add( idx, bitMaps );
+            LeafNode<I> leafNode = root.add(idx, bitMaps);
             data.put(leafNode.getIdx(), leafNode);
             result = Optional.of(idx);
         }
@@ -136,19 +142,18 @@ public abstract class Trie<I> implements Index<I> {
     @Override
     public final void remove(I index) {
         LeafNode<I> leaf = data.get(index);
-        if (leaf != null)
-        {
+        if (leaf != null) {
             leaf.delete();
         }
     }
 
     @Override
-    public final Set<I> search(Hasher hasher) {
-        return search( new SimpleBloomFilter(shape,hasher));
+    public final Set<I> search(HasherCollection hashers) {
+        return search(hashers.filterFor(shape));
     }
 
     public final Set<I> search(BloomFilter filter) {
-        return search( filter.asBitMapArray()  );
+        return search(filter.asBitMapArray());
     }
 
     public final Set<I> search(long[] bitMaps) {
@@ -157,17 +162,19 @@ public abstract class Trie<I> implements Index<I> {
         return result;
 
     }
+
     @Override
-    public Optional<I> get(Hasher hasher) {
-        return get( new SimpleBloomFilter(shape,hasher) );
+    public Optional<I> get(HasherCollection hashers) {
+        return get(hashers.filterFor(shape));
     }
 
     public Optional<I> get(BloomFilter filter) {
-        return get( filter.asBitMapArray());
+        return get(filter.asBitMapArray());
     }
 
     public Optional<I> get(long[] bitMaps) {
-        List<LeafNode<I>> candidates = search(bitMaps).stream().map(data::get).filter(l -> l != null).collect(Collectors.toList());
+        List<LeafNode<I>> candidates = search(bitMaps).stream().map(data::get).filter(l -> l != null)
+                .collect(Collectors.toList());
         I result = null;
         for (LeafNode<I> leaf : candidates) {
             List<InnerNode<I>> lst = new ArrayList<InnerNode<I>>();
@@ -191,9 +198,12 @@ public abstract class Trie<I> implements Index<I> {
     }
 
     /**
-     * Get the array of long representation of the Bloom filter specified by the leaf node.
-     * The Bloom filter is encoded into the Trie, this method extracts it.
-     * @param nodes the inner nodes that point to the leaf node in order from root to inner node above leaf.
+     * Get the array of long representation of the Bloom filter specified by the
+     * leaf node. The Bloom filter is encoded into the Trie, this method extracts
+     * it.
+     * 
+     * @param nodes the inner nodes that point to the leaf node in order from root
+     * to inner node above leaf.
      * @param leaf the leaf node.
      * @return the long[] representation of the Bloom filter stored on the leaf.
      */
@@ -219,6 +229,7 @@ public abstract class Trie<I> implements Index<I> {
 
     /**
      * Get the chunk for a specific level from a Bloom filter.
+     * 
      * @param filter the Bloom filter to extract the chunk from.
      * @param level the level of the chunk.
      * @return the specified chunk.
@@ -245,6 +256,7 @@ public abstract class Trie<I> implements Index<I> {
     public Set<I> getAll() {
         return new HashSet<I>(data.keySet());
     }
+
     public int getMaxDepth() {
         return (int) Math.ceil(shape.getNumberOfBits() * 1.0 / getChunkSize());
     }

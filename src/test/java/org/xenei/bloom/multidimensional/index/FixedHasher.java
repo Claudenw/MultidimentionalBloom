@@ -7,7 +7,8 @@ import org.apache.commons.collections4.bloomfilter.IndexProducer;
 import org.apache.commons.collections4.bloomfilter.Shape;
 
 /**
- * To be used for testing only. The fixed indices must fit within the filter shape.
+ * To be used for testing only. The fixed indices must fit within the filter
+ * shape.
  */
 class FixedHasher implements Hasher {
     private final int[] indices;
@@ -37,9 +38,9 @@ class FixedHasher implements Hasher {
         // Check the hasher is OK for the shape
         int bits = shape.getNumberOfBits();
         for (int i : indices) {
-           // Assertions.assertTrue(i < bits);
-            if (! (i < bits) ) {
-                throw new RuntimeException( "bad index");
+            // Assertions.assertTrue(i < bits);
+            if (!(i < bits)) {
+                throw new RuntimeException("bad index");
             }
         }
     }

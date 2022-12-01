@@ -29,13 +29,13 @@ public class InnerNode<I> implements Node<I> {
      */
     private final Trie<I> trie;
     /**
-     * The array of child nodes from this node.
-     * The number of children is determined by the chunk size.
+     * The array of child nodes from this node. The number of children is determined
+     * by the chunk size.
      */
     private final Node<I>[] nodes;
     /**
-     * The level (aka: depth) at which this nodes sits in the trie.
-     * zero based counting.
+     * The level (aka: depth) at which this nodes sits in the trie. zero based
+     * counting.
      */
     private final int level;
 
@@ -46,6 +46,7 @@ public class InnerNode<I> implements Node<I> {
 
     /**
      * Constrcuts an innter node.
+     * 
      * @param level the level at which this node sits.
      * @param trie the Trie in which this node sits.
      * @param parent the parent Node of this one.
@@ -59,17 +60,18 @@ public class InnerNode<I> implements Node<I> {
     }
 
     /**
-     * Gets base node status.
-     * A base node is an inner node just above the leaf nodes.
-     * @return true if this is a  base node.
+     * Gets base node status. A base node is an inner node just above the leaf
+     * nodes.
+     * 
+     * @return true if this is a base node.
      */
     public boolean isBaseNode() {
         return level + 1 == trie.getMaxDepth();
     }
 
     /**
-     * Get the nodes below this one.
-     * The array may contain null values.
+     * Get the nodes below this one. The array may contain null values.
+     * 
      * @return the array of nodes below this one.
      */
     public Node<I>[] getChildNodes() {
@@ -108,8 +110,9 @@ public class InnerNode<I> implements Node<I> {
     }
 
     /**
-     * Searches this inner node and populate the set of Bloom filter index values from the leaf
-     * nodes.
+     * Searches this inner node and populate the set of Bloom filter index values
+     * from the leaf nodes.
+     * 
      * @param indexes The set of Bloom filter indexes.
      * @param filter the filter we are looking for.
      */
@@ -136,9 +139,9 @@ public class InnerNode<I> implements Node<I> {
     }
 
     /**
-     * Removes the child node from this node.
-     * If this node becomes empty during this operation it must remove itself
-     * from its parent as well.
+     * Removes the child node from this node. If this node becomes empty during this
+     * operation it must remove itself from its parent as well.
+     * 
      * @param childNode the node to remove from the array of children.
      */
     public void remove(Node<I> childNode) {
@@ -164,9 +167,11 @@ public class InnerNode<I> implements Node<I> {
 
     /**
      * Locates the child node within the list of child nodes.
+     * 
      * @param childNode the child node to locate.
      * @return the index of the child node in the list.
-     * @throws IllegalArgumentException if the child is not in the array of children.
+     * @throws IllegalArgumentException if the child is not in the array of
+     * children.
      */
     public int find(Node<I> childNode) {
         for (int i = 0; i < nodes.length; i++) {

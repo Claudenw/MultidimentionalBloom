@@ -24,9 +24,10 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
+
 import org.xenei.bloom.multidimensional.Container.Storage;
 
-public class InMemory<E,I> implements Storage<E,I> {
+public class InMemory<E, I> implements Storage<E, I> {
 
     private HashMap<I, List<E>> storage = new HashMap<I, List<E>>();
 
